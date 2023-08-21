@@ -17,39 +17,45 @@ PI = 'Bonanomi'
 
 # load libraries 
 suppressMessages(library("edgeR"))
-suppressMessages(library(data.table))
+suppressMessages(library("data.table"))
 suppressMessages(library("DESeq2"))
-suppressMessages(library(openxlsx))
-suppressMessages(library(dplyr))
-suppressMessages(library(ggplot2))
+suppressMessages(library("openxlsx"))
+suppressMessages(library("dplyr"))
+suppressMessages(library("ggplot2"))
 suppressMessages(library("RColorBrewer"))
-suppressMessages(library(enrichR))
-suppressMessages(library(grid))
-suppressMessages(library(gridExtra))
-#install.packages('VennDiagram')
+suppressMessages(library("enrichR"))
+suppressMessages(library("grid"))
+suppressMessages(library("gridExtra"))
 suppressMessages(library('VennDiagram'))
-#install.packages("venn")
-suppressMessages(library(venn))
-suppressMessages(library(cowplot))
-suppressMessages(library(ggpubr))
+suppressMessages(library("venn"))
+suppressMessages(library("cowplot"))
+suppressMessages(library("ggpubr"))
 suppressMessages(library("viridis"))
 suppressMessages(library('pals'))
-suppressMessages(library(RColorBrewer))
-suppressMessages(library(wesanderson))
-suppressMessages(library(patchwork))
-suppressMessages(library(magick))
+suppressMessages(library("RColorBrewer"))
+suppressMessages(library("wesanderson"))
+suppressMessages(library("patchwork"))
+suppressMessages(library("magick"))
 suppressMessages(library('philentropy'))
 suppressMessages(library('IntClust'))
 suppressMessages(library('pheatmap'))
-suppressMessages(library(assertr))
+suppressMessages(library("assertr"))
 suppressMessages(library("remotes"))
-suppressMessages(library(GeneOverlap))
+suppressMessages(library("GeneOverlap"))
 suppressMessages(library('stringr'))
-suppressMessages(library(ggrepel))
-suppressMessages(library(sva))
+suppressMessages(library("ggrepel"))
+suppressMessages(library("sva"))
 
-setwd("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/literature/Corada_embryo")
+#setwd("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/literature/Corada_embryo")
 
+
+#Re-analyze Corada's dataset GSE122564 + Our bulkRNAseq KO vs WT Cherry (7DPI)
+
+#Corada M, Orsenigo F, Bhat GP, Conze LL et al. 
+#Fine-Tuning of Sox17 and Canonical Wnt Coordinates the Permeability Properties of the Blood-Brain Barrier. 
+#Circ Res 2019 Feb 15;124(4):511-525. PMID: 30591003
+
+#Load Corada's data
 test=read.table("GSM3473961_EC-E15.5_WT_1_ReadsPerGene.norm.txt", header = T)
 test1=read.table("GSM3473962_EC-E15.5_WT_2_ReadsPerGene.norm.txt", header = T)
 test2=read.table("GSM3473963_EC-E15.5_WT_3_ReadsPerGene.norm.txt", header = T)
@@ -72,44 +78,33 @@ write.xlsx(counts,
            row.names = F,
            asTable = T)
 
+#Load our data
 
-setwd("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Corada_embryo")
-
-
-# path to the count file generated with pypette
+# setwd("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Corada_embryo")
+# path to the count files (2 seq runs)
 filecount_1 = '/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/BonanomiD_1292_RNASeq/7_bioinfo/combined_samples_1133_1292/raw_not_corrected_counts_tables_1133_1292/1292/all.counts.gz'
-#giulys_filecount='/Users/maurizio.aurora/Documents/BOOB/BonanomiD_1133_RNAseq/dataset/20191211/counts.gz'
 filecount_2 ='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/BonanomiD_1292_RNASeq/7_bioinfo/combined_samples_1133_1292/raw_not_corrected_counts_tables_1133_1292/1133/all.counts.gz'
 
-
-#head(metadata_file_auri)
 # Min number of replica in each group
-#Nreplica= 4
 Nreplica= 3
 
-# import metadata
-
+# import metadata 
 metadata_d = read.xlsx("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Corada_embryo/metadata_corada.xlsx")
-#remove outliers from metadata
 
+# import Corada's counts
 coradas_filecount = read.xlsx("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Corada_embryo/counts_corada.xlsx")
-
 coradas_filecount$Geneid = coradas_filecount$gene_name
-
 fCounts_corada = coradas_filecount[,c("Geneid", "E15.5_WT1", "E15.5_WT2","E15.5_WT3","Adult_WT1","Adult_WT2","Adult_WT3")]
 
-head(fCounts_corada)
-# import counts
+# import our counts
 annotation <- c('GeneID','Chr','Start','End','Strand','Length')
 fCounts_1 <- read.delim(file=filecount_1, header=TRUE, check.names = F)
 fCounts_2 <- read.delim(file=filecount_2, header=TRUE, check.names = F)
 
+# merge all counts 
 fCounts_temp <- merge(fCounts_1, fCounts_2, by=c("Geneid","Chr","Start","End","Length","Strand"))
-
 fCounts <- merge(fCounts_temp, fCounts_corada, by=c("Geneid"))
-nrow(fCounts) 
 
-colnames(fCounts)
 
 fCountsData_not_adj <- fCounts[
   , 
@@ -125,19 +120,17 @@ fCountsAnnotation <- fCounts[
     %in% 
       tolower(annotation))]
 
-fCounts_bis= select(fCounts, "Geneid","Chr","Start","End","Length","Strand" )
-colnames(fCounts_bis)
 
 
 geneidColname <- 'Geneid'
 geneidIdx <- which(tolower(annotation) %in% tolower(geneidColname))
 rownames(fCountsData_not_adj) <- fCounts[[geneidIdx]]
 
+
 # Reordering counts matrix to have samples ordered as in metadata
 # it assumes that the first column in metadata is sample name
 fCountsData_not_adj <- fCountsData_not_adj[,match(metadata[,1], colnames(fCountsData_not_adj))] 
 
-#metadata$Plxnd1 = as.factor(metadata$Plxnd1)
 row.names(metadata_d) = metadata_d$sample
 
 
@@ -149,17 +142,15 @@ covar_mat <- cbind(cov2, cov2)
 
 fCountsData_adjusted_p = fCountsData_not_adj[,row.names(metadata_d)]
 
-help(ComBat_seq)
+# use CombatSeq to correct strong batch effect that was difficult to correct with only DEseq2 covariates in exp design formula.
 fCountsData_adjusted_adjusted <- ComBat_seq(as.matrix(fCountsData_adjusted_p), batch=exp_batch, group=NULL, full_mod=FALSE) #combined
-
 fCountsData_adjusted_d=fCountsData_adjusted_adjusted
 
-colnames(fCountsData_adjusted_d)
+# save tables as a multisheet excel
 
 SAVE_variable <- list()
 filename_xls <- paste('COUNTS_bonanomi_corada',prj,'.xlsx', sep='')
 variable2save_names <- c('all_counts', 'expGenes_counts','expGenes_LogCPM', 'expGenes_LogRPKM', 'expGenes_RPKM')
-
 
 # all_counts 
 y <- DGEList(counts=fCountsData_adjusted_d, genes = fCountsAnnotation)
@@ -193,10 +184,12 @@ write.xlsx(SAVE_variable,
 y <- DGEList(counts=fCountsData_adjusted_d, genes = fCountsAnnotation)
 fCountsRPKM = rpkm(y, log=T, gene.length =y$genes$Length)
 
-provaA=rowSums(cpm(y)>1)>=Nreplica
-head(provaA)
+
 keep <- rowSums(cpm(y)>1)>=Nreplica
-length(provaA)
+
+# make preliminary plots on top 500 most variable genes
+
+#PCA in Fig2 D
 yf <- y[keep,]
 nrow(yf)
 N=500
@@ -229,11 +222,9 @@ score$sampleID = metadata_d$sample
 pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy], 
                         color=nerve))+
   geom_label_repel(data= score, aes(x=score[,pcx], y=score[,pcy], 
-                                    #color=nerve, label = str_sub(x <- sampleID)),
                                     color=nerve, label = ""),
                    size = 5,  box.padding = unit(0.55, "lines"), point.padding = unit(0.55, "lines"),
                    segment.color = 'grey50') +
-  #geom_point(aes(size= IL7))+
   geom_point(size= 12)+
   labs(x=xlab, y=ylab, title=paste("PC",pcx," vs PC",pcy," scoreplot",sep="")) + 
   geom_hline(yintercept=0, linetype="dashed", color = "darkgrey") +
@@ -246,10 +237,9 @@ pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy],
         legend.text = element_text(face = "bold", color = "black", size = 18),
         legend.position="right", 
         panel.background = element_rect(fill = "white",colour = "black", size = 1, linetype = "solid")) +
-  #scale_color_manual(values = brewer.pal(n = 5, name = "Spectral"))  
   scale_color_manual(values=c("#33691E", "#FFAB91", 'purple',"#B388FF",'#4C9900'))
 
-
+#Fig2 D
 options(repr.plot.width=13, repr.plot.height=7)
 pdf('PCA_top500rpkm_Corada_newcolors_squeezed.pdf', width = 8, height = 10)
 pca
@@ -257,7 +247,9 @@ dev.off()
 
 
 
+#Heatmap in Fig S2 A
 
+#load selected genes
 subset = readLines("/Users/maurizio.aurora/Documents/corada_genes.txt")
 
 
@@ -282,7 +274,7 @@ df1 <- annotation_column_ %>%
 re_filtered <- filtered[, rownames(df1)]
 
 
-
+#Fig S2 A
 HP <- pheatmap::pheatmap(re_filtered,
                          scale = 'row',
                          annotation_col = annotation_column_,
@@ -593,10 +585,8 @@ for (nerve in names(dgeResults)) {
     labs(x = "log2 fold change", y = "-log10 p-value")   
   
   print(VP0)
-  #pdf(paste(f,'/','VulcanoPlot_',nerve,'.pdf',sep=''),width=8, height=6.5)
-  #pdf(paste('VulcanoPlot_Plnd1',nerve,'.pdf',sep=''),width=8, height=6.5)
+
   pdf(paste('VulcanoPlot_Up_',nerve,'.pdf',sep=''),width=8, height=6.5)
-  #pdf(paste('VulcanoPlot_Dw',nerve,'.pdf',sep=''),width=8, height=6.5)
   plot(VP0)
   dev.off()
   
@@ -614,11 +604,7 @@ for (nerve in names(dgeResults)) {
     scale_alpha_manual(values = myalpha) +
     geom_hline(yintercept=0, linetype="dashed", color = "darkgrey") +
     geom_vline(xintercept=0, linetype="dashed", color = "darkgrey") +
-    #geom_label_repel(data= results[up_label,], aes(x = log2FoldChange, y = -log10(pvalue), color = DE),
-    #geom_label_repel(data= results[down_label,], aes(x = log2FoldChange, y = -log10(pvalue), color = DE),
     geom_label_repel(data= results["nerve",], aes(x = log2FoldChange, y = -log10(pvalue), color = DE),
-                     #label = row.names(results[down_label,]), size = 3,
-                     #label = row.names(results[up_label,]), size = 3,
                      label = row.names(results["nerve",]), size = 3,
                      box.padding = unit(0.35, "lines"), point.padding = unit(0.5, "lines"),segment.color = 'grey50') +
     theme(plot.title = element_text(color="black", size=12, face="bold.italic"),
@@ -633,10 +619,7 @@ for (nerve in names(dgeResults)) {
     labs(x = "log2 fold change", y = "-log10 p-value")   
   
   print(VP1)
-  #pdf(paste(f,'/','VulcanoPlot_',nerve,'.pdf',sep=''),width=8, height=6.5)
   pdf(paste('VulcanoPlot_Plnd1_',nerve,'.pdf',sep=''),width=8, height=6.5)
-  #pdf(paste('VulcanoPlot_Up',Plxnd1,'.pdf',sep=''),width=8, height=6.5)
-  #pdf(paste('VulcanoPlot_Dw',Plxnd1,'.pdf',sep=''),width=8, height=6.5)
   plot(VP1)
   dev.off()
   
@@ -651,17 +634,12 @@ for (nerve in names(dgeResults)) {
           (p2 + theme(plot.margin = unit(c(0,0,0,30), "pt"))) +  
           plot_layout(guides = "collect"))
   dev.off()
-  
-  #A1 <- image_read_pdf(paste(f,'/','MA_VP_',Plxnd1,'.pdf',sep=''), density = 70)
-  #image_write(A1, path = paste(f,'/','MA_VP_',Plxnd1,'.tiff',sep=''), format = "tiff")
+
   
 }
 
 
-
 ####### FDR ########
-
-
 
 fdrUP = list()
 
@@ -679,7 +657,9 @@ fdrDW = lapply(names(dgeResults),
                                                         dgeResults[[x]]$log2FoldChange < 0])
 names(fdrDW)= names(dgeResults)
 
+
 ####### SEQC ########
+
 seqcUP = list()
 
 pvalue = 0.01

@@ -10,58 +10,51 @@ knitr::opts_chunk$set(echo = TRUE)
 # set working diretory
 prj = 'BonanomiD_1292_RNASeq'
 PI = 'Bonanomi'
-#setwd(paste("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/",
-#            PI,"/",prj,
-#            "/7_bioinfo/",
-#            sep=''))
-#setwd("/Users/maurizio.aurora/Documents/BonanomiD_1287_scRNA_injury_TdT/combined_14")
-setwd("/Users/maurizio.aurora/Documents/BonanomiD_1287_scRNA_injury_TdT/CHERRY_NEW")
 
-
+#setwd("/Users/maurizio.aurora/Documents/BonanomiD_1287_scRNA_injury_TdT/CHERRY_NEW")
 
 
 # load libraries
-suppressMessages(library(dplyr))
+suppressMessages(library("dplyr"))
 suppressMessages(library("edgeR"))
-suppressMessages(library(data.table))
+suppressMessages(library("data.table"))
 suppressMessages(library("DESeq2"))
-suppressMessages(library(openxlsx))
-suppressMessages(library(dplyr))
-suppressMessages(library(ggplot2))
+suppressMessages(library("openxlsx"))
+suppressMessages(library("dplyr"))
+suppressMessages(library("ggplot2"))
 suppressMessages(library("RColorBrewer"))
-suppressMessages(library(enrichR))
-suppressMessages(library(grid))
-suppressMessages(library(gridExtra))
-#install.packages('VennDiagram')
+suppressMessages(library("enrichR"))
+suppressMessages(library("grid"))
+suppressMessages(library("gridExtra"))
 suppressMessages(library('VennDiagram'))
-#install.packages("venn")
-suppressMessages(library(venn))
-suppressMessages(library(cowplot))
-suppressMessages(library(ggpubr))
+suppressMessages(library("venn"))
+suppressMessages(library("cowplot"))
+suppressMessages(library("ggpubr"))
 suppressMessages(library("viridis"))
 suppressMessages(library('pals'))
-suppressMessages(library(RColorBrewer))
-suppressMessages(library(wesanderson))
-suppressMessages(library(patchwork))
-suppressMessages(library(magick))
+suppressMessages(library("RColorBrewer"))
+suppressMessages(library("wesanderson"))
+suppressMessages(library("patchwork"))
+suppressMessages(library("magick"))
 suppressMessages(library('philentropy'))
 suppressMessages(library('IntClust'))
 suppressMessages(library('pheatmap'))
-suppressMessages(library(assertr))
+suppressMessages(library("assertr"))
 suppressMessages(library("remotes"))
-suppressMessages(library(GeneOverlap))
+suppressMessages(library("GeneOverlap"))
 suppressMessages(library('stringr'))
-suppressMessages(library(ggrepel))
+suppressMessages(library("ggrepel"))
 #install.packages("multcompView", repos="http://R-Forge.R-project.org")
-suppressMessages(library(multcompView))
-suppressMessages(library(sva))
-suppressMessages(library(ComplexHeatmap))
+suppressMessages(library("multcompView"))
+suppressMessages(library("sva"))
+suppressMessages(library("ComplexHeatmap"))
 
 
+# path to the count files (2 seq runs containg both Cherry and Tomato samples)
 filecount_1 = '/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/BonanomiD_1292_RNASeq/7_bioinfo/combined_samples_1133_1292/raw_not_corrected_counts_tables_1133_1292/1292/all.counts.gz'
 filecount_2='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/BonanomiD_1292_RNASeq/7_bioinfo/combined_samples_1133_1292/raw_not_corrected_counts_tables_1133_1292/1133/all.counts.gz'
 
-
+#define the number of replicates
 Nreplica= 3
 
 # import metadata
@@ -69,15 +62,10 @@ metadata = read.xlsx("/Users/maurizio.aurora/Documents/metadata.xlsx")
 #remove outliers from metadata
 metadata <- subset(metadata, sample!= c("72","DB_2_130"))
 
-
 # import counts
 annotation <- c('GeneID','Chr','Start','End','Strand','Length')
 fCounts_1 <- read.delim(file=filecount_1, header=TRUE, check.names = F)
 fCounts_2 <- read.delim(file=filecount_2, header=TRUE, check.names = F)
-
-
-intersected=intersect(fCounts_2$Geneid,fCounts_1$Geneid)
-
 
 fCounts <- merge(fCounts_1, fCounts_2, by=c("Geneid","Chr","Start","End","Length","Strand"))
 
@@ -89,12 +77,14 @@ fCountsData_not_adj <- fCounts[
     %in%
       tolower(annotation))]
 
+
 fCountsAnnotation <- fCounts[
   ,
   which(
     tolower(names(fCounts))
     %in%
       tolower(annotation))]
+
 
 fCounts_bis= select(fCounts, "Geneid","Chr","Start","End","Length","Strand" )
 
@@ -109,25 +99,24 @@ rownames(fCounts_bis) = fCounts_bis$Geneid
 fCountsData_not_adj_temp = fCountsData_not_adj
 fCountsData_not_adj_temp$Geneid = rownames(fCountsData_not_adj)
 
-
 fCounts_cherry_tomato <- merge(fCounts_bis, fCountsData_not_adj_temp, by="Geneid")
 
+fCounts_onlycherry = fCounts_cherry_tomato[,c("Geneid","Chr","Start","End","Length","Strand","DB_1_127","DB_5_148","DB_6_151","101","104","74")]
 
-fCounts_cherry_tomato_onlycherry = fCounts_cherry_tomato[,c("Geneid","Chr","Start","End","Length","Strand","DB_1_127","DB_5_148","DB_6_151","101","104","74")]
-
-
-fCounts_cherry_tomato_onlytomato = fCounts_cherry_tomato[,c("Geneid","Chr","Start","End","Length","Strand","DB_3_131","DB_4_133", "DB_7_152", "DB_8_153",
+fCounts_onlytomato = fCounts_cherry_tomato[,c("Geneid","Chr","Start","End","Length","Strand","DB_3_131","DB_4_133", "DB_7_152", "DB_8_153",
                                                             "DB_9_154","DB_10_189","DB_11_190", "DB_12_191", "77", "80", "83", "92", "95", "98")]
 
 
-write.table(fCounts_cherry_tomato_onlycherry, "Raw_counts_Cherry.tsv", sep = "\t", row.names = T, col.names = T )
-write.table(fCounts_cherry_tomato_onlytomato, "Raw_counts_Tomato.tsv", sep = "\t", row.names = T, col.names = T )
+write.table(fCounts_onlycherry, "Raw_counts_Cherry.tsv", sep = "\t", row.names = T, col.names = T )
+write.table(fCounts_onlytomato, "Raw_counts_Tomato.tsv", sep = "\t", row.names = T, col.names = T )
 
 
 
 
 #####################
-## ONLY CHERRY SAMPLE
+# ONLY CHERRY SAMPLES
+# 7DPI
+# KO vs WT
 #####################
 
 
@@ -136,7 +125,6 @@ metadata_d = metadata[metadata$reporter == 'KDR_cherry',]
 
 getwd()
 
-#metadata$Plxnd1 = as.factor(metadata$Plxnd1)
 row.names(metadata_d) = metadata_d$sample
 cov1=as.factor(metadata_d$nerve)
 cov2=factor(metadata_d$Plxnd1, levels = c('WT', 'KO'))
@@ -146,14 +134,17 @@ covar_mat <- cbind(cov2, cov3)
 
 fCountsData_notadjusted_p = fCountsData_not_adj[,row.names(metadata_d)]
 
-#correct batch effect with ComBatSeq
+# correct batch effect with ComBatSeq
+# Using DEseq2 covariates in exp design formula is not enough.
+
 fCountsData_adjusted_d <- ComBat_seq(as.matrix(fCountsData_notadjusted_p), batch=exp_batch, group=cov2 ) #combined
+
+
+# save tables about Cherry exp in multisheet Excel file.
 
 SAVE_variable <- list()
 filename_xls <- paste('COUNTS_cherry',prj,'.xlsx', sep='')
 variable2save_names <- c('all_counts', 'expGenes_counts','expGenes_LogCPM', 'expGenes_LogRPKM', 'expGenes_RPKM')
-
-
 
 # all_counts
 y <- DGEList(counts=fCountsData_adjusted_d, genes = fCountsAnnotation)
@@ -228,12 +219,14 @@ ylab = paste("PC", pcy, " (",var[pcy],"%)", sep="")
 cum = var[pcx]+var[pcy]
 names = rownames(pca$x)
 
-
 score$exp = metadata_d$exp
 score$reporter = metadata_d$reporter
 score$nerve = metadata_d$nerve
 score$Plxnd1 = metadata_d$Plxnd1
 score$sampleID = metadata_d$sample
+
+
+#top 500 most variable genes PCA
 
 pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy],
                         color=Plxnd1, shape = exp))+
@@ -272,7 +265,7 @@ annotation_column = annotation_column[,c('nerve','Plxnd1')]
 options(repr.plot.width=12, repr.plot.height=10)
 
 
-# top 500 rpkm heatmap
+# top 500 most variable genes heatmap
 
 crp <- colorRampPalette(c('dodgerblue4','white','darkred'))
 colors = crp(255)
@@ -318,6 +311,7 @@ matched <- grep(paste(toMatch,collapse="|"),
 
 ha = rowAnnotation(foo = anno_mark(at = matches, labels = matched))
 
+# FigS3 A
 
 pdf('Heatmap_logrpkm_Cherry_white_filtered_annotated_smallish_test.pdf',10, 12)
 ComplexHeatmap::pheatmap(refiltered,
@@ -338,9 +332,8 @@ ComplexHeatmap::pheatmap(refiltered,
                          right_annotation = ha)
 dev.off()
 
-
 #####MiniHeatmaps#######
-
+# Fig3 F
 annotation_column = as.data.frame(colnames(KOWTac))
 colnames(annotation_column)= "Plxnd1"
 rownames(annotation_column) <- colnames(KOWTac)
@@ -379,7 +372,7 @@ head(KOWTac)
 KOWTac <- KOWTac[,c("DB_1_127","DB_5_148","101","DB_6_151","104","74")]
 
 
-
+# Fig3 F
 pdf('MiniHeatmap_Angiogenesis_Cherry_not_avg.pdf')
 pheatmap(as.matrix(KOWTac),
          main = "Angiogenesis",
@@ -397,6 +390,7 @@ pheatmap(as.matrix(KOWTac),
          annotation_col = annotation_column_)
 dev.off()
 
+# Fig3 F
 pdf('MiniHeatmap_Angiogenesis_Cherry.pdf')
 pheatmap(as.matrix(KOWTac),
          main = "Angiogenesis",
@@ -414,18 +408,15 @@ pheatmap(as.matrix(KOWTac),
          annotation_col = annotation_column)
 dev.off()
 
-
-
 WTac = WT[rownames(WT) %in% interferon_cherry,]
 KOac = KO[rownames(KO) %in% interferon_cherry,]
 
-
 KOWTac = cbind(KOac, WTac)
 head(KOWTac)
-#KOWTac = KOWTac[,c("KO","WT")]
 
 KOWTac <- KOWTac[,c("DB_1_127","DB_5_148","101","DB_6_151","104","74")]
 
+# Fig3 F
 pdf('MiniHeatmap_Interferon_Cherry_not_avg.pdf')
 pheatmap(as.matrix(KOWTac),
          main = "Interferon",
@@ -443,9 +434,6 @@ pheatmap(as.matrix(KOWTac),
          annotation_col = annotation_column_)
 dev.off()
 
-
-
-
 WTac = WT[rownames(WT) %in% TNFalpha_cherry,]
 KOac = KO[rownames(KO) %in% TNFalpha_cherry,]
 
@@ -455,7 +443,7 @@ head(KOWTac)
 
 KOWTac <- KOWTac[,c("DB_1_127","DB_5_148","101","DB_6_151","104","74")]
 
-
+# Fig3 F
 pdf('MiniHeatmap_TNFalpha_Cherry_not_avg.pdf')
 pheatmap(as.matrix(KOWTac),
          main = "TNFalpha",
@@ -474,16 +462,14 @@ pheatmap(as.matrix(KOWTac),
 dev.off()
 
 
-
-
 WTac = WT[rownames(WT) %in% inflammation_cherry,]
 KOac = KO[rownames(KO) %in% inflammation_cherry,]
-
 
 KOWTac = cbind(KOac, WTac)
 
 KOWTac <- KOWTac[,c("DB_1_127","DB_5_148","101","DB_6_151","104","74")]
 
+# Fig3 F
 pdf('MiniHeatmap_inflammation_Cherry_not_avg.pdf')
 pheatmap(as.matrix(KOWTac),
          main = "Inflammation",
@@ -512,6 +498,7 @@ head(KOWTac)
 
 KOWTac <- KOWTac[,c("DB_1_127","DB_5_148","101","DB_6_151","104","74")]
 
+# Fig3 F
 
 pdf('MiniHeatmap_TGFbeta_Cherry_not_avg.pdf')
 pheatmap(as.matrix(KOWTac),
@@ -1164,8 +1151,11 @@ print('FDR_tot');lengths(fdrUP) + lengths(fdrDW)
 print('SEQC_tot'); lengths(seqcUP) + lengths(seqcDW)
 
 
-######################
-###### ENRICHR ########
+###########################
+### ENRICHR enrichment ####
+###########################
+
+
 databases <- listEnrichrDbs()
 
 dir.create('enrichR/', showWarnings=FALSE, recursive=TRUE)

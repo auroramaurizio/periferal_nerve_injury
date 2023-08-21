@@ -10,12 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 # set working diretory
 prj = 'BonanomiD_1292_RNASeq'
 PI = 'Bonanomi'
-#setwd(paste("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/",
-#            PI,"/",prj,
-#            "/7_bioinfo/",
-#            sep=''))
-
-
 
 getwd()
 ```{r pressure, echo=FALSE}
@@ -24,50 +18,51 @@ plot(pressure)
 
 
 # load libraries
+
+suppressMessages(library("dplyr"))
 suppressMessages(library("edgeR"))
-suppressMessages(library(data.table))
+suppressMessages(library("data.table"))
 suppressMessages(library("DESeq2"))
-suppressMessages(library(openxlsx))
-suppressMessages(library(dplyr))
-suppressMessages(library(ggplot2))
+suppressMessages(library("openxlsx"))
+suppressMessages(library("dplyr"))
+suppressMessages(library("ggplot2"))
 suppressMessages(library("RColorBrewer"))
-suppressMessages(library(enrichR))
-suppressMessages(library(grid))
-suppressMessages(library(gridExtra))
+suppressMessages(library("enrichR"))
+suppressMessages(library("grid"))
+suppressMessages(library("gridExtra"))
 suppressMessages(library('VennDiagram'))
-suppressMessages(library(venn))
-suppressMessages(library(cowplot))
-suppressMessages(library(ggpubr))
+suppressMessages(library("venn"))
+suppressMessages(library("cowplot"))
+suppressMessages(library("ggpubr"))
 suppressMessages(library("viridis"))
 suppressMessages(library('pals'))
-suppressMessages(library(RColorBrewer))
-suppressMessages(library(wesanderson))
-suppressMessages(library(patchwork))
-suppressMessages(library(magick))
+suppressMessages(library("RColorBrewer"))
+suppressMessages(library("wesanderson"))
+suppressMessages(library("patchwork"))
+suppressMessages(library("magick"))
 suppressMessages(library('philentropy'))
 suppressMessages(library('IntClust'))
 suppressMessages(library('pheatmap'))
-suppressMessages(library(assertr))
+suppressMessages(library("assertr"))
 suppressMessages(library("remotes"))
-suppressMessages(library(GeneOverlap))
+suppressMessages(library("GeneOverlap"))
 suppressMessages(library('stringr'))
-suppressMessages(library(ggrepel))
+suppressMessages(library("ggrepel"))
+#install.packages("multcompView", repos="http://R-Forge.R-project.org")
+suppressMessages(library("multcompView"))
+suppressMessages(library("sva"))
+suppressMessages(library("ComplexHeatmap"))
 
 
-
-# path to the count file generated with pypette
+# path to the count files containing Cherry and Tomato data
 filecount_1 = '/Users/maurizio.aurora/Documents/filecount_1/samples/all/runs/all/fastq/merge-by-read/trimmed/trimmomatic/mapped/STAR/merged/featureCounts/merged/all.counts.gz'
-#giulys_filecount='/Users/maurizio.aurora/Documents/BOOB/BonanomiD_1133_RNAseq/dataset/20191211/counts.gz'
 filecount_2 ='/Users/maurizio.aurora/Documents/filecount_2/samples/all/runs/all/fastq/merge-by-read/trimmed/trimmomatic/mapped/STAR/merged/featureCounts/merged/all.counts.gz'
-
 
 # Min number of replica in each group
 Nreplica= 4
 
-# import metadata
-
+# import metadata for Cherry and Tomato samples
 metadata = read.xlsx("/Users/maurizio.aurora/Documents/BonanomiD_1287_scRNA_injury_TdT/metadata.xlsx")
-
 
 # import counts
 annotation <- c('GeneID','Chr','Start','End','Strand','Length')
@@ -93,7 +88,6 @@ fCountsAnnotation <- fCounts[
       tolower(annotation))]
 
 
-
 geneidColname <- 'Geneid'
 geneidIdx <- which(tolower(annotation) %in% tolower(geneidColname))
 rownames(fCountsData) <- fCounts[[geneidIdx]]
@@ -102,27 +96,7 @@ rownames(fCountsData) <- fCounts[[geneidIdx]]
 # it assumes that the first column in metadata is sample name
 fCountsData <- fCountsData[,match(metadata[,1], colnames(fCountsData))]
 
-
-# biotypes
-#BiocManager::install("GEOquery")
-#load biotypes.R
-source('/Users/maurizio.aurora/Downloads/plot-biotypes.R')
-
-biotypesFile = '/Users/maurizio.aurora/Documents/dataset/181020/gencode.vM22.basic.annotation.BIOTYPES.DICTIONARY.gz'
-biotypes_function(
-  countsFile    = filecount,
-  biotypesFile  = biotypesFile,
-  pngFolder     = 'Biotypes/',
-  minSamples    = 3,
-  filterExp     = TRUE,
-  useRpkm       = TRUE,
-  plotPie       = TRUE,
-  sglSamplePlot = TRUE,
-  writeTable    = TRUE,
-  perc2plot     = 0.001,
-  useGgplot     = TRUE)
-
-
+# save tables as a multisheet excel (cherry and tomato)
 SAVE_variable <- list()
 filename_xls <- paste('COUNTS_',prj,'.xlsx', sep='')
 variable2save_names <- c('all_counts', 'expGenes_counts','expGenes_LogCPM', 'expGenes_LogRPKM', 'expGenes_RPKM')
@@ -177,7 +151,9 @@ gene_control = c('Xist','Tsix','Actb','Gapdh','Gusb','B2m','Rps27a','Sry','Ddx3y
 
 rpkm.control = fCountsRPKM[which(rownames(fCountsRPKM) %in% gene_control),]
 
-#### heatmap control genes
+#### check control genes to be sure that sample's sex matches what expected
+#### first good practice check to spot sample switch (at macro level)
+
 colors <- colorRampPalette( rev(brewer.pal(11, "RdYlBu")) )(255)
 crp <- colorRampPalette(c('dodgerblue4','white','darkred'))
 colors = crp(255)
@@ -202,152 +178,11 @@ row.names(annotation_column) <- metadata[,1]
 options(repr.plot.width=12, repr.plot.height=10)
 row.names(annotation_column) <- metadata[,1]
 
-crp <- colorRampPalette(c('dodgerblue4','white','darkred'))
-colors = crp(255)
-
-getwd()
-
-
-#PCA parameters
-pcx = 1
-pcy = 2
-centering = TRUE
-scaling = TRUE
-
-
-# PCA
-pca = prcomp(t(fCountsRPKMTOP), center=centering, scale=scaling)
-var = round(matrix(((pca$sdev^2)/(sum(pca$sdev^2))), ncol=1)*100,1)
-score = as.data.frame(pca$x)
-
-# plot paramters
-xlab = paste("PC", pcx, " (",var[pcx],"%)", sep="")
-ylab = paste("PC", pcy, " (",var[pcy],"%)", sep="")
-cum = var[pcx]+var[pcy]
-names = rownames(pca$x)
-
-
-#plot
-pca_plot <- list()
-
-i=0
-for (col in 2:dim(metadata)[2]) {
-  score$factor <-  metadata[,col]
-  i=i+1
-  pca_plot[[i]] <- ggplot(score, aes(x=score[,pcx], y=score[,pcy], color=factor))+
-    geom_point(size=5)+
-    labs(x=xlab, y=ylab, title=paste("PC",pcx," vs PC",pcy," scoreplot",sep="")) +
-    geom_hline(yintercept=0, linetype="dashed", color = "darkgrey") +
-    geom_vline(xintercept=0, linetype="dashed", color = "darkgrey") +
-    theme(plot.title = element_text(color="black", size=26, face="bold.italic"),
-          axis.text.x = element_text(angle = 0, face = "bold", color = "black", size=22, hjust =.5),
-          axis.title.x = element_text(face = "bold", color = "black", size = 24),
-          axis.text.y = element_text(angle = 0, face = "bold", color = "black", size=22),
-          axis.title.y = element_text(face = "bold", color = "black", size = 24),
-          legend.text = element_text(face = "bold", color = "black", size = 16),
-          legend.position="right",
-          panel.background = element_rect(fill = "white",colour = "black", size = 1, linetype = "solid"))
-}
-
-
-png("pca1.png")
-pca_plot[[1]]
-dev.off()
-
-png("pca2.png")
-pca_plot[[2]]
-dev.off()
-
-png("pca3.png")
-pca_plot[[3]]
-dev.off()
-
-png("pca4.png")
-pca_plot[[4]]
-dev.off()
-
-metadata$reporter = as.factor(metadata$reporter)
-metadata$reporter = factor(metadata$reporter, levels = c('KDR_cherry','Tomato'))
-
-metadata$nerve = as.factor(metadata$nerve)
-metadata$nerve = factor(metadata$nerve, levels = c('intact','crush_d7','crush_d14') )
-
-metadata$Plxnd1 = as.factor(metadata$Plxnd1)
-metadata$Plxnd1 = factor(metadata$Plxnd1, levels = c('WT','KO','na') )
-
-metadata$exp = as.factor(metadata$exp)
-metadata$exp = factor(metadata$exp, levels = c('1292','1133') )
-
-
-score$exp = metadata$exp
-score$Plxnd1 = metadata$Plxnd1
-score$nerve = metadata$nerve
-score$reporter = metadata$reporter
-score$sampleID = metadata$sample
-
-
-
-pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy],
-                        color=reporter, shape = Plxnd1))+
-  geom_label_repel(data= score, aes(x=score[,pcx], y=score[,pcy],
-                                    color=reporter, label = str_sub(x <- sampleID)),
-                   #color=reporter, label = str_sub(x <- sampleID,7,-1)),
-                   size = 6,  box.padding = unit(1, "lines"), point.padding = unit(0.1, "lines"),
-                   segment.color = 'grey50') +
-  geom_point(size= 8)+
-  labs(x=xlab, y=ylab, title=paste("PC",pcx," vs PC",pcy," scoreplot",sep="")) +
-  geom_hline(yintercept=0, linetype="dashed", color = "darkgrey") +
-  geom_vline(xintercept=0, linetype="dashed", color = "darkgrey") +
-  theme(plot.title = element_text(color="black", size=26, face="bold.italic"),
-        axis.text.x = element_text(angle = 0, face = "bold", color = "black", size=22, hjust =.5),
-        axis.title.x = element_text(face = "bold", color = "black", size = 24),
-        axis.text.y = element_text(angle = 0, face = "bold", color = "black", size=22),
-        axis.title.y = element_text(face = "bold", color = "black", size = 24),
-        legend.text = element_text(face = "bold", color = "black", size = 18),
-        legend.position="right",
-        panel.background = element_rect(fill = "white",colour = "black", size = 1, linetype = "solid")) +
-  scale_color_manual(values = brewer.pal(n = 3, name = "Dark2"))
-
-options(repr.plot.width=10, repr.plot.height=8.5)
-
-pdf('PCA_top500rpkm_Plxnd1_bis.pdf', width = 10, height = 8.5)
-pca
-dev.off()
-
-
-
-pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy],
-                        color=nerve, shape = reporter))+
-  geom_label_repel(data= score, aes(x=score[,pcx], y=score[,pcy],
-                                    #color=nerve, label = str_sub(x <- sampleID)),
-                                    color=nerve, label = sampleID),
-                   #color=reporter, label = str_sub(x <- sampleID,7,-1)),
-                   size = 6,  box.padding = unit(1, "lines"), point.padding = unit(0.1, "lines"),
-                   segment.color = 'grey50') +
-  geom_point(size= 8)+
-  labs(x=xlab, y=ylab, title=paste("PC",pcx," vs PC",pcy," scoreplot",sep="")) +
-  geom_hline(yintercept=0, linetype="dashed", color = "darkgrey") +
-  geom_vline(xintercept=0, linetype="dashed", color = "darkgrey") +
-  theme(plot.title = element_text(color="black", size=26, face="bold.italic"),
-        axis.text.x = element_text(angle = 0, face = "bold", color = "black", size=22, hjust =.5),
-        axis.title.x = element_text(face = "bold", color = "black", size = 24),
-        axis.text.y = element_text(angle = 0, face = "bold", color = "black", size=22),
-        axis.title.y = element_text(face = "bold", color = "black", size = 24),
-        legend.text = element_text(face = "bold", color = "black", size = 18),
-        legend.position="right",
-        panel.background = element_rect(fill = "white",colour = "black", size = 1, linetype = "solid")) +
-  scale_color_manual(values = brewer.pal(n = 3, name = "Dark2"))
-
-options(repr.plot.width=10, repr.plot.height=8.5)
-
-pdf('PCA_top500rpkm_reporter_bis.pdf', width = 10, height = 8.5)
-pca
-dev.off()
-
 
 
 #####################################
-####### only Tomato sample ##########
+####### only Tomato samples #########
+### intact s.nerve, D7 PI, D14 PI ###
 #####################################
 
 
@@ -377,7 +212,7 @@ pcx = 1
 pcy = 2
 centering = TRUE
 scaling = TRUE
-# PCA
+#top 500 most variable genes PCA
 pca = prcomp(t(fCountsRPKMTOP), center=centering, scale=scaling)
 var = round(matrix(((pca$sdev^2)/(sum(pca$sdev^2))), ncol=1)*100,1)
 score = as.data.frame(pca$x)
@@ -415,13 +250,15 @@ pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy],
   scale_color_manual(values = watlington(12))
 
 options(repr.plot.width=13, repr.plot.height=7)
-#pca
+
+
 pdf('PCA_top500rpkm_Tomato.pdf', width = 14, height = 10)
 pca
 dev.off()
 
-annotation_column <- metadata_d[,2:(dim(metadata_d)[2])]
 
+
+annotation_column <- metadata_d[,2:(dim(metadata_d)[2])]
 
 row.names(annotation_column) <- metadata_d[,1]
 options(repr.plot.width=12, repr.plot.height=10)
@@ -429,6 +266,8 @@ options(repr.plot.width=12, repr.plot.height=10)
 
 crp <- colorRampPalette(c('dodgerblue4','white','darkred'))
 colors = crp(255)
+
+# Fig2 A Heatmap of top 500 most variable genes
 HP <- pheatmap::pheatmap(fCountsRPKMTOP,
                          scale = 'row',
                          annotation_col = annotation_column,
@@ -537,6 +376,616 @@ HP <- pheatmap::pheatmap(fCountsRPKMTOP,
 
 
 
+########################
+
+# MiniHeatmaps of Fig2 E
+
+angiogenesis = readLines("/Users/maurizio.aurora/Downloads/angiogenesis.txt")
+barrier = readLines("/Users/maurizio.aurora/Downloads/barrier_go.txt")
+endmt = readLines("/Users/maurizio.aurora/Downloads/endmt.txt")
+inflammation = readLines("/Users/maurizio.aurora/Downloads/inflammation.txt")
+glycolisis = readLines("/Users/maurizio.aurora/Downloads/glycolisis.txt")
+lipidmetabolism = readLines("/Users/maurizio.aurora/Downloads/lipidmetabolism.txt")
+transporters = readLines("/Users/maurizio.aurora/Downloads/transporters.txt")
+
+
+logrpkm = read.xlsx(
+  "/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/BonanomiD_1292_RNASeq/7_bioinfo/combined_samples_1133_1292/COUNTS_BonanomiD_1292_RNASeq.xlsx",
+  sheet = 4,
+  startRow = 1,
+  colNames = TRUE,
+  rowNames = TRUE,
+)
+
+
+metadata = read.xlsx(
+  "/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/BonanomiD_1292_RNASeq/7_bioinfo/combined_samples_1133_1292/metadata.xlsx",
+  sheet = 1,
+  startRow = 1,
+  colNames = TRUE,
+  rowNames = TRUE,
+)
+
+
+metadata_d = metadata[metadata$reporter == 'Tomato',]
+metadata$nerve = as.factor(metadata$nerve)
+
+logrpkm = logrpkm[,row.names(metadata_d)]
+
+comparison = list(crush_d14 = c("crush_d14"),
+                  intact = c("intact"),
+                  crush_d7 = c("crush_d7"))
+
+
+metadata_crush_d14 = metadata_d[metadata_d$nerve %in% comparison[[1]],]
+crush_d14 = logrpkm[,row.names(metadata_crush_d14)]
+crush_d14$average = rowMeans(crush_d14)
+
+metadata_crush_intact = metadata_d[metadata_d$nerve %in% comparison[[2]],]
+intact = logrpkm[,row.names(metadata_crush_intact)]
+intact$average = rowMeans(intact)
+
+metadata_crush_d7 = metadata_d[metadata_d$nerve %in% comparison[[3]],]
+crush_d7 = logrpkm[,row.names(metadata_crush_d7)]
+crush_d7$average = rowMeans(crush_d7)
+
+
+#############
+
+# barrier D14
+
+crush_d14_subset_barrier = crush_d14[row.names(crush_d14) %in% barrier,]
+crush_d14_subset_barrier$annotation = "barrier"
+crush_d14_subset_barrier$sample = "crush_d14"
+crush_d14_subset_barrier =  crush_d14_subset_barrier[c("average","annotation","sample")]
+crush_d14_subset_barrier$gene = row.names(crush_d14_subset_barrier)
+
+#############
+
+# barrier intact
+
+intact_subset_barrier = intact[row.names(intact) %in% barrier,]
+intact_subset_barrier$annotation = "barrier"
+intact_subset_barrier$sample = "intact"
+
+intact_subset_barrier =  intact_subset_barrier[c("average","annotation","sample")]
+intact_subset_barrier$gene = row.names(intact_subset_barrier)
+
+##############
+
+# barrier D7
+
+crush_d7_subset_barrier = crush_d7[row.names(crush_d7) %in% barrier,]
+crush_d7_subset_barrier$annotation = "barrier"
+crush_d7_subset_barrier$sample = "crush_d7"
+crush_d7_subset_barrier =  crush_d7_subset_barrier[c("average","annotation","sample")]
+crush_d7_subset_barrier$gene = row.names(crush_d7_subset_barrier)
+
+###############
+###############
+
+# angiogenesis D14
+
+crush_d14_subset_angiogenesis = crush_d14[row.names(crush_d14) %in% angiogenesis,]
+crush_d14_subset_angiogenesis$annotation = "angiogenesis"
+crush_d14_subset_angiogenesis$sample = "crush_d14"
+crush_d14_subset_angiogenesis =  crush_d14_subset_angiogenesis[c("average","annotation","sample")]
+crush_d14_subset_angiogenesis$gene = row.names(crush_d14_subset_angiogenesis)
+
+############
+
+# angiogenesis intact
+
+intact_subset_angiogenesis = intact[row.names(intact) %in% angiogenesis,]
+intact_subset_angiogenesis$annotation = "angiogenesis"
+intact_subset_angiogenesis$sample = "intact"
+intact_subset_angiogenesis =  intact_subset_angiogenesis[c("average","annotation","sample")]
+intact_subset_angiogenesis$gene = row.names(intact_subset_angiogenesis)
+
+##############
+
+# angiogenesis D7
+
+crush_d7_subset_angiogenesis = crush_d7[row.names(crush_d7) %in% angiogenesis,]
+crush_d7_subset_angiogenesis$annotation = "angiogenesis"
+crush_d7_subset_angiogenesis$sample = "crush_d7"
+crush_d7_subset_angiogenesis =  crush_d7_subset_angiogenesis[c("average","annotation","sample")]
+crush_d7_subset_angiogenesis$gene = row.names(crush_d7_subset_angiogenesis)
+
+###############
+###############
+
+# endmt D14
+
+crush_d14_subset_endmt = crush_d14[row.names(crush_d14) %in% endmt,]
+crush_d14_subset_endmt$annotation = "endmt"
+crush_d14_subset_endmt$sample = "crush_d14"
+crush_d14_subset_endmt =  crush_d14_subset_endmt[c("average","annotation","sample")]
+crush_d14_subset_endmt$gene = row.names(crush_d14_subset_endmt)
+
+############
+
+# endmt intact
+
+intact_subset_endmt = intact[row.names(intact) %in% endmt,]
+intact_subset_endmt$annotation = "endmt"
+intact_subset_endmt$sample = "intact"
+intact_subset_endmt =  intact_subset_endmt[c("average","annotation","sample")]
+intact_subset_endmt$gene = row.names(intact_subset_endmt)
+
+##############
+
+# endmt D7
+
+crush_d7_subset_endmt = crush_d7[row.names(crush_d7) %in% endmt,]
+crush_d7_subset_endmt$annotation = "endmt"
+crush_d7_subset_endmt$sample = "crush_d7"
+crush_d7_subset_endmt =  crush_d7_subset_endmt[c("average","annotation","sample")]
+crush_d7_subset_endmt$gene = row.names(crush_d7_subset_endmt)
+
+###############
+###############
+
+# inflammation D14
+
+crush_d14_subset_inflammation = crush_d14[row.names(crush_d14) %in% inflammation,]
+crush_d14_subset_inflammation$annotation = "inflammation"
+crush_d14_subset_inflammation$sample = "crush_d14"
+crush_d14_subset_inflammation =  crush_d14_subset_inflammation[c("average","annotation","sample")]
+crush_d14_subset_inflammation$gene = row.names(crush_d14_subset_inflammation)
+
+############
+
+# inflammation intact
+
+intact_subset_inflammation = intact[row.names(intact) %in% inflammation,]
+intact_subset_inflammation$annotation = "inflammation"
+intact_subset_inflammation$sample = "intact"
+intact_subset_inflammation =  intact_subset_inflammation[c("average","annotation","sample")]
+intact_subset_inflammation$gene = row.names(intact_subset_inflammation)
+
+##############
+
+# inflammation D7
+
+crush_d7_subset_inflammation = crush_d7[row.names(crush_d7) %in% inflammation,]
+crush_d7_subset_inflammation$annotation = "inflammation"
+crush_d7_subset_inflammation$sample = "crush_d7"
+crush_d7_subset_inflammation =  crush_d7_subset_inflammation[c("average","annotation","sample")]
+crush_d7_subset_inflammation$gene = row.names(crush_d7_subset_inflammation)
+
+
+#############
+#############
+
+# glycolisis D14
+
+crush_d14_subset_glycolisis = crush_d14[row.names(crush_d14) %in% glycolisis,]
+crush_d14_subset_glycolisis$annotation = "glycolisis"
+crush_d14_subset_glycolisis$sample = "crush_d14"
+crush_d14_subset_glycolisis =  crush_d14_subset_glycolisis[c("average","annotation","sample")]
+crush_d14_subset_glycolisis$gene = row.names(crush_d14_subset_glycolisis)
+
+############
+
+# glycolisis intact
+
+intact_subset_glycolisis = intact[row.names(intact) %in% glycolisis,]
+intact_subset_glycolisis$annotation = "glycolisis"
+intact_subset_glycolisis$sample = "intact"
+intact_subset_glycolisis =  intact_subset_glycolisis[c("average","annotation","sample")]
+intact_subset_glycolisis$gene = row.names(intact_subset_glycolisis)
+
+##############
+
+# glycolisis D7
+
+crush_d7_subset_glycolisis = crush_d7[row.names(crush_d7) %in% glycolisis,]
+crush_d7_subset_glycolisis$annotation = "glycolisis"
+crush_d7_subset_glycolisis$sample = "crush_d7"
+crush_d7_subset_glycolisis =  crush_d7_subset_glycolisis[c("average","annotation","sample")]
+crush_d7_subset_glycolisis$gene = row.names(crush_d7_subset_glycolisis)
+
+##############
+##############
+
+# lipidmetabolism D14
+
+crush_d14_subset_lipidmetabolism = crush_d14[row.names(crush_d14) %in% lipidmetabolism,]
+crush_d14_subset_lipidmetabolism$annotation = "lipidmetabolism"
+crush_d14_subset_lipidmetabolism$sample = "crush_d14"
+crush_d14_subset_lipidmetabolism =  crush_d14_subset_lipidmetabolism[c("average","annotation","sample")]
+crush_d14_subset_lipidmetabolism$gene = row.names(crush_d14_subset_lipidmetabolism)
+
+############
+
+# lipidmetabolism intact
+
+intact_subset_lipidmetabolism = intact[row.names(intact) %in% lipidmetabolism,]
+intact_subset_lipidmetabolism$annotation = "lipidmetabolism"
+intact_subset_lipidmetabolism$sample = "intact"
+intact_subset_lipidmetabolism =  intact_subset_lipidmetabolism[c("average","annotation","sample")]
+intact_subset_lipidmetabolism$gene = row.names(intact_subset_lipidmetabolism)
+
+##############
+
+# lipidmetabolism D7
+
+crush_d7_subset_lipidmetabolism = crush_d7[row.names(crush_d7) %in% lipidmetabolism,]
+crush_d7_subset_lipidmetabolism$annotation = "lipidmetabolism"
+crush_d7_subset_lipidmetabolism$sample = "crush_d7"
+crush_d7_subset_lipidmetabolism =  crush_d7_subset_lipidmetabolism[c("average","annotation","sample")]
+crush_d7_subset_lipidmetabolism$gene = row.names(crush_d7_subset_lipidmetabolism)
+
+##############
+##############
+
+# transporters D14
+
+crush_d14_subset_transporters = crush_d14[row.names(crush_d14) %in% transporters,]
+crush_d14_subset_transporters$annotation = "transporters"
+crush_d14_subset_transporters$sample = "crush_d14"
+crush_d14_subset_transporters =  crush_d14_subset_transporters[c("average","annotation","sample")]
+crush_d14_subset_transporters$gene = row.names(crush_d14_subset_transporters)
+
+############
+
+# transporters intact
+
+intact_subset_transporters = intact[row.names(intact) %in% transporters,]
+intact_subset_transporters$annotation = "transporters"
+intact_subset_transporters$sample = "intact"
+intact_subset_transporters =  intact_subset_transporters[c("average","annotation","sample")]
+intact_subset_transporters$gene = row.names(intact_subset_transporters)
+
+##############
+
+# transporters D7
+
+crush_d7_subset_transporters = crush_d7[row.names(crush_d7) %in% transporters,]
+crush_d7_subset_transporters$annotation = "transporters"
+crush_d7_subset_transporters$sample = "crush_d7"
+crush_d7_subset_transporters =  crush_d7_subset_transporters[c("average","annotation","sample")]
+crush_d7_subset_transporters$gene = row.names(crush_d7_subset_transporters)
+
+
+#############
+
+
+ann_colors = list(
+  sample = c("Intact" = 'light salmon',
+             "D7" = 'tomato',
+             "D14" = 'maroon'))
+
+
+
+crp <- colorRampPalette(c('dodgerblue4','white','darkred'))
+colors = crp(255)
+minH = -2; maxH=2
+myb = seq(minH, maxH, by = 0.01)
+myc <- crp(length(myb))
+
+
+draw_colnames_45 <- function (coln, gaps, ...) {
+  coord <- pheatmap:::find_coordinates(length(coln), gaps)
+  x     <- coord$coord - 0.5 * coord$size
+  res   <- grid::textGrob(
+    coln, x = x, y = unit(1, "npc") - unit(3,"bigpts"),
+    vjust = 0.75, hjust = 1, rot = 45, gp = grid::gpar(...)
+  )
+  return(res)
+}
+assignInNamespace(
+  x = "draw_colnames",
+  value = "draw_colnames_45",
+  ns = asNamespace("pheatmap")
+)
+
+
+crush_d7_subset_transporters$D7 = crush_d7_subset_transporters$average
+
+crush_d14_subset_transporters$D14 = crush_d14_subset_transporters$average
+
+intact_subset_transporters$Intact = intact_subset_transporters$average
+
+
+test_trans = cbind(intact_subset_transporters, crush_d7_subset_transporters, crush_d14_subset_transporters)
+head(test_trans)
+test_trans = test_trans[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_trans))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_trans)
+head(annotation_column)
+
+#Fig2 E
+
+pdf('MiniHeatmap_Transporters.pdf')
+pheatmap(as.matrix(test_trans),
+         main = "Transporters",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+#############
+
+crush_d7_subset_barrier$D7 = crush_d7_subset_barrier$average
+
+crush_d14_subset_barrier$D14 = crush_d14_subset_barrier$average
+
+intact_subset_barrier$Intact = intact_subset_barrier$average
+
+
+test_barrier = cbind(intact_subset_barrier, crush_d7_subset_barrier, crush_d14_subset_barrier)
+head(test_barrier)
+test_barr = test_barrier[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_barr))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_barr)
+head(annotation_column)
+
+
+#Fig2 E
+
+pdf('MiniHeatmap_Barrier.pdf')
+pheatmap(as.matrix(test_barr),
+         main = "Barrier",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+
+#############
+
+
+crush_d7_subset_angiogenesis$D7 = crush_d7_subset_angiogenesis$average
+
+crush_d14_subset_angiogenesis$D14 = crush_d14_subset_angiogenesis$average
+
+intact_subset_angiogenesis$Intact = intact_subset_angiogenesis$average
+
+
+test_angiogenesis = cbind(intact_subset_angiogenesis, crush_d7_subset_angiogenesis, crush_d14_subset_angiogenesis)
+head(test_angiogenesis)
+test_ang = test_angiogenesis[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_ang))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_ang)
+head(annotation_column)
+
+
+#Fig2 E
+
+pdf('MiniHeatmap_angiogenesis.pdf')
+pheatmap(as.matrix(test_ang),
+         main = "Angiogenesis",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+
+##########
+
+
+crush_d7_subset_endmt$D7 = crush_d7_subset_endmt$average
+
+crush_d14_subset_endmt$D14 = crush_d14_subset_endmt$average
+
+intact_subset_endmt$Intact = intact_subset_endmt$average
+
+
+test_endmt = cbind(intact_subset_endmt, crush_d7_subset_endmt, crush_d14_subset_endmt)
+head(test_endmt)
+test_endmt = test_endmt[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_endmt))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_endmt)
+head(annotation_column)
+
+#Fig2 E
+
+pdf('MiniHeatmap_endmt.pdf')
+pheatmap(as.matrix(test_endmt),
+         main = "EMT",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+
+##########
+
+crush_d7_subset_inflammation$D7 = crush_d7_subset_inflammation$average
+
+crush_d14_subset_inflammation$D14 = crush_d14_subset_inflammation$average
+
+intact_subset_inflammation$Intact = intact_subset_inflammation$average
+
+
+test_inflammation = cbind(intact_subset_inflammation, crush_d7_subset_inflammation, crush_d14_subset_inflammation)
+head(test_inflammation)
+test_inflammation = test_inflammation[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_inflammation))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_inflammation)
+head(annotation_column)
+
+#Fig2 E
+
+pdf('MiniHeatmap_inflammation.pdf')
+pheatmap(as.matrix(test_inflammation),
+         main = "Inflammation",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+############
+
+crush_d7_subset_glycolisis$D7 = crush_d7_subset_glycolisis$average
+
+crush_d14_subset_glycolisis$D14 = crush_d14_subset_glycolisis$average
+
+intact_subset_glycolisis$Intact = intact_subset_glycolisis$average
+
+
+test_glycolisis = cbind(intact_subset_glycolisis, crush_d7_subset_glycolisis, crush_d14_subset_glycolisis)
+head(test_glycolisis)
+test_glycolisis = test_glycolisis[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_glycolisis))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_glycolisis)
+head(annotation_column)
+
+
+#Fig2 E
+
+pdf('MiniHeatmap_glycolisis.pdf')
+pheatmap(as.matrix(test_glycolisis),
+         main = "Glycolisis",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+
+#############
+
+
+crush_d7_subset_lipidmetabolism$D7 = crush_d7_subset_lipidmetabolism$average
+
+crush_d14_subset_lipidmetabolism$D14 = crush_d14_subset_lipidmetabolism$average
+
+intact_subset_lipidmetabolism$Intact = intact_subset_lipidmetabolism$average
+
+
+test_lipidmetabolism = cbind(intact_subset_lipidmetabolism, crush_d7_subset_lipidmetabolism, crush_d14_subset_lipidmetabolism)
+head(test_lipidmetabolism)
+test_lipidmetabolism = test_lipidmetabolism[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_lipidmetabolism))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_lipidmetabolism)
+head(annotation_column)
+
+
+#Fig2 E
+
+pdf('MiniHeatmap_lipidmetabolism.pdf')
+pheatmap(as.matrix(test_lipidmetabolism),
+         main = "Lipid metabolism",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+########à
+
+
+
+crush_d7_subset_lipidmetabolism$D7 = crush_d7_subset_lipidmetabolism$average
+
+crush_d14_subset_lipidmetabolism$D14 = crush_d14_subset_lipidmetabolism$average
+
+intact_subset_lipidmetabolism$Intact = intact_subset_lipidmetabolism$average
+
+
+test_lipidmetabolism = cbind(intact_subset_lipidmetabolism, crush_d7_subset_lipidmetabolism, crush_d14_subset_lipidmetabolism)
+head(test_lipidmetabolism)
+test_lipidmetabolism = test_lipidmetabolism[,c("Intact","D7","D14")]
+
+annotation_column = as.data.frame(colnames(test_lipidmetabolism))
+colnames(annotation_column)= "sample"
+rownames(annotation_column) <- colnames(test_lipidmetabolism)
+head(annotation_column)
+
+#Fig2 E
+
+pdf('MiniHeatmap_lipidmetabolism.pdf')
+pheatmap(as.matrix(test_lipidmetabolism),
+         main = "lipidmetabolism",
+         show_rownames = T,
+         show_colnames = F,
+         cellheight = 50,
+         cellwidth = 50,
+         cluster_rows = F,
+         cluster_cols = F,
+         #left_annotation = row_ha,
+         scale = 'row',
+         fontsize = 15,
+         annotation_colors = ann_colors,
+         annotation_col = annotation_column)
+dev.off()
+
+
+
+
+
+######### DGE #####################################################
 
 f = "nerve"
 seqc_pvalue = 0.01
@@ -692,10 +1141,6 @@ write.xlsx(dgeResults_table,
            asTable = T,
            startRow = 1,
            sheetName = str_sub(names(dgeResults),1,31))
-
-
-
-
 
 
 #plots
@@ -954,16 +1399,8 @@ convertMouseGeneList <- function(x){
   human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
   mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
   genesV2 = getLDS(attributes = c("mgi_symbol"), filters = "mgi_symbol", values = x , mart = mouse, attributesL = c("hgnc_symbol"), martL = human, uniqueRows=T)
-  #print(head(genesV2))
-  #print(length(genesV2))
-  #humanx <- unique(genesV2[, 2])
-  # Print the first 6 genes found to the screen
-  #print(head(humanx))
-  #return(humanx)
   return(genesV2)
 }
-
-
 
 
 ###### enrichment #######
@@ -983,103 +1420,4 @@ for (c in names(dgeResults)) {
               quote = F, row.names= F, col.names = F, sep ='\t')
 
 }
-
-
-
-#########################
-
-### Jaccard distances ###
-# -------------------------
-# Jaccard distances
-# -------------------------
-dir = paste("./enrichR/JaccardPlots/", sep = '')
-dir.create(dir)
-#'WikiPathways_2016'
-#database = c('KEGG_2016','Reactome_2016','GO_Biological_Process_2018')
-p.value.thr = 0.01
-
-breaksList = seq(0, 1, by = 0.001)
-
-cutree_rows_values = c(5,12,3,10,5,1)
-
-lf = list.files(paste("./enrichR/", sep=''), pattern=glob2rx("*.xlsx"))
-for (file in lf) {
-  enrichR.file = paste("./enrichR/",file,sep='')
-  s = openxlsx::getSheetNames(enrichR.file)
-  Pathways.Table = data.frame()
-  for (dat in s[1:length(s)]) {
-    Table <- read.xlsx(xlsxFile = enrichR.file,
-                       sheet = dat,
-                       startRow = 1,
-                       colNames = TRUE,
-                       rowNames = TRUE,
-                       detectDates = FALSE,
-                       skipEmptyRows = TRUE,
-                       skipEmptyCols = TRUE,
-                       na.strings = "NA",
-                       fillMergedCells = FALSE)
-
-    Pathways.Table = rbind(Pathways.Table, Table)
-  }
-
-  gene.list = list()
-  gene.all = character()
-  pathways = unlist(row.names(Pathways.Table[Pathways.Table$Adjusted.P.value < p.value.thr,]))
-
-  for (p in pathways) {
-    gene.list[[p]] <- unlist(strsplit(Pathways.Table[p,]$Genes, ';'))
-    gene.all = c(gene.all, unlist(strsplit(Pathways.Table[p,]$Genes, ';')))
-  }
-  gene.all = unique(gene.all)
-
-  if (length(gene.all) !=0) {
-    # MAtrix
-    M = matrix(0, nrow = length(pathways), ncol = length(gene.all))
-    row.names(M) = pathways
-    colnames(M) = gene.all
-
-    for (pat in pathways) {
-      for (gene in gene.all) {
-        if (gene %in% gene.list[[pat]]) {
-          M[pat,gene] <- 1
-        }
-      }
-    }
-
-    if (length(pathways) >1) {
-      # Jaccard dist
-      Jacard.Matrix <- distance(M, method = "jaccard")
-      if (length(pathways)==2) {
-        Jacard.Matrix_new = as.matrix(rbind(c(0,Jacard.Matrix),c(Jacard.Matrix,0)))
-        Jacard.Matrix = Jacard.Matrix_new
-      }
-
-      row.names(Jacard.Matrix) <- pathways
-      colnames(Jacard.Matrix) <- pathways
-
-      w=30; h=80; fs = 5; cutree_rows_N = 10
-      if (file=='b.resting_IL7_vs_b.resting_seqc_up_.xlsx'){w=14; h=10; fs = 4; cutree_rows_N = 3}
-      myb = seq(0,1,by = 0.01)
-      myc = colorRampPalette(brewer.pal(n = 7, name ="RdYlBu"))(length(myb))
-      pheatmap(Jacard.Matrix,
-               border_color = 'darkgrey',
-               color = myc,
-               breaks = myb,
-               cluster_rows = TRUE,
-               cluster_cols = TRUE,
-               cutree_rows = cutree_rows_N,
-               show_colnames = FALSE,
-               main = paste(file,'- Jaccard distance heatmap'),
-               fontsize = 12,
-               fontsize_row = fs,
-               filename = paste(dir,file,'_JaccardDist.pdf', sep=''),
-               width=w, height=h)
-    }
-  }
-}
-
-
-
-
-
 
