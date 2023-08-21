@@ -3,21 +3,19 @@ library(ggplot2)
 packageVersion("Seurat")
 
 # The signaling crosstalk between ECs and other cellTypes involved in nerve injury was investigated by merging
-# ECs from our intact/7 dpi scRNA-seq datasets, together with Schwann cells, macrophages, and Mesenchymal cells from other studies
-# {Toma, 2020; Ydens, 2020; Carr, 2019 }.
+# ECs from our intact/7 dpi scRNA-seq datasets, together with Schwann cells, macrophages, and Mesenchymal cells 
+#from other studies {Toma, 2020; Ydens, 2020; Carr, 2019 }.
 # In parallel the same analysis was performed with MES cells from our study instead of Carr's.
 # In this script we use Carr's MES.
 
 
-setwd("/Users/maurizio.aurora/Documents/cellphonedb_meta_injury_EC_MES_MACS_SCHWANN_integrated/")
-
-# Intact datasets
+# Merge intact datasets
 
 merged_int <- merge(EC_Intact, y = c(MES_Intact,MACROPHAGES_Intact, SCHWANN_Intact),
                     add.cell.ids = c("EC", "MES", "MACROPHAGES", "SCHWANN"), project = "Intact")
 
 
-head(merged_int)
+
 merged_int[["percent.mt"]] <- PercentageFeatureSet(merged_int, pattern = "^mt-")
 merged_int[["percent.Rpl"]] <- PercentageFeatureSet(merged_int, pattern = "Rpl")
 merged_int <- NormalizeData(merged_int, verbose = FALSE)
@@ -36,11 +34,14 @@ merged_int <- RunTSNE(merged_int, dims = 1:nPC)
 DimPlot(merged_int, label = T, repel = T)
 DefaultAssay(merged_int) = "RNA"
 
+
+getwd()
+
 #saveRDS(merged_int, "Intact_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
-merged_int = readRDS("Intact_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
+#merged_int = readRDS("Intact_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
 
 
-# Injury datasets
+# Merge injury datasets
 
 
 merged_inj <- merge(EC_Injury, y = c(MES_Injury,MACROPHAGES_Injury, SCHWANN_Injury),
@@ -65,8 +66,7 @@ DimPlot(merged_inj, label = T, repel = T)
 DefaultAssay(merged_inj) = "RNA"
 
 #saveRDS(merged_inj, "Injury_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
-
-merged_inj = readRDS("Injury_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
+#merged_inj = readRDS("Injury_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
 
 # Intact + Injury datasets
 
@@ -82,7 +82,7 @@ SCHWANN_Injury <- subset(x = merged_inj, subset = stim == "schwann_Injury")
 MES_Intact <- subset(x = merged_int, subset = stim == "mes_Intact")   
 MES_Injury <- subset(x = merged_inj, subset = stim == "mes_Injury")  
 
-
+# Merge intact and injury datasets
 
 merged <- merge(EC_Intact, y = c(MES_Intact,MACROPHAGES_Intact, SCHWANN_Intact, EC_Injury,MES_Injury,MACROPHAGES_Injury, SCHWANN_Injury), 
                 add.cell.ids = c("EC_Intact", "MES_Intact", "MACROPHAGES_Intact", "SCHWANN_Intact", "EC_Injury", "MES_Injury", "MACROPHAGES_Injury", "SCHWANN_Injury"), project = "IntactInjury")
@@ -105,14 +105,14 @@ merged <- RunTSNE(merged, dims = 1:nPC)
 
 #saveRDS(merged, merged_all_cell_types.Rds)
 
-merged = readRDS("merged_all_cell_types.Rds")
+#merged = readRDS("merged_all_cell_types.Rds")
 
 merged@meta.data$stim[merged@meta.data$stim == "1"] <- "EC_Intact"
 merged@meta.data$stim[merged@meta.data$stim == "2"] <- "EC_Injury"
 
 # Semaphorin DotPlot
 
-# semaphorin genes to plot
+# upload semaphorin genes to plot
 sema = readLines("/Users/maurizio.aurora/Downloads/sema.txt")
 
 
@@ -123,7 +123,7 @@ merged$stim <- factor(merged$stim,
                                             "schwann_Intact", "schwann_Injury"))
 
 
-table(merged$stim)
+
 DefaultAssay(merged) = "RNA"
 table(Idents(merged))
 new.cluster.ids.lit <- c('EC', 
@@ -153,6 +153,7 @@ test = c("EC", "MES_DIFF",
          "MES_ENDO", "MES_EPI", 
          "MES_PERI", "MACS",
          "SCHWANN")
+
 levels(object_new) <- test
 
 object_new$dataset <- factor(object_new$stim, 
@@ -161,7 +162,8 @@ object_new$dataset <- factor(object_new$stim,
                                               "macs_Intact", "macs_Injury",
                                               "schwann_Intact", "schwann_Injury"))
 
-levels(object_new$dataset)
+
+# Fig S3 Semaphorin dotplot
 DefaultAssay(object_new) = "RNA"
 pdf("Semadotplot_splitbystim_newcols_green_violet_test.pdf", 8, 7)
 DotPlot(object_new, 
@@ -174,6 +176,8 @@ DotPlot(object_new,
   RotatedAxis() 
 dev.off()
 
+#KDR dotplot for referees
+
 pdf("DotPlot_Kdr_splitbystim_newcols_green_violet.pdf", 8, 3)
 DotPlot(object_new, 
         split.by = "dataset",
@@ -185,7 +189,8 @@ DotPlot(object_new,
   RotatedAxis() 
 dev.off()
 
-DefaultAssay(object_new)
+
+#KDR vlnplots for referees
 
 pdf("VlnPlot_Kdr_splitbystim_newcols_green_violet_median_line.pdf", 8, 4)
 VlnPlot(object_new, "Kdr", group.by = "dataset", pt.size = 0, cols = c("limegreen","darkviolet","limegreen","darkviolet","limegreen","darkviolet","limegreen","darkviolet")) +
@@ -218,10 +223,6 @@ dev.off()
 
 
 
-
-
-
-##########
 
 
 

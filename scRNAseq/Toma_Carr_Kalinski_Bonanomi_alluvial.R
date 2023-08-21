@@ -225,7 +225,11 @@ pt4 = rbind(pt0, pt1, pt2, pt3)
 
 positions <- c("Intact", "3D", "7D", "9D")
 
-pdf("prippp.pdf", 15, 10)
+
+
+# Fig1 G
+
+pdf("Alluvial_EC_0_3_7_9.pdf", 15, 10)
 gg <- ggplot(pt4,
              aes(x = Var2, stratum = Cluster, alluvium = Cluster,
                  y = freq,

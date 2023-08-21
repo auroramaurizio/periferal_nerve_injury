@@ -34,6 +34,15 @@ library(dittoSeq)
 
 # Re-analyze the dataset - Milich
 
+# In this spinal chord injury dataset are present:
+#- 3 uninjured biological replicates (from five animals),
+#- 3 biological replicates at 1 dpi (fromfive animals), 
+#- 2 biological replicates at 3 dpi (from three animals), 
+#- 2 biological replicates at 7 dpi (from three animals).
+
+#many cell types are represented: EC, Fibro, Neuron, Microglia etc.
+
+
 
 uninj_sample1 <-read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610/GSM4955359_qc_filtered_feature_bc_matrix_uninj_sample1.txt", header = T)
 uninj_s1 <- CreateSeuratObject(counts = uninj_sample1, project = "uninj_sample1", min.cells = 5, min.features = 200)
@@ -46,8 +55,8 @@ uninj_s1$stim <- "uninj"
 options(repr.plot.width=8, repr.plot.height=6)
 VlnPlot(uninj_s1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-
 ##########
+
 uninj_sample2 <-read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610/GSM4955360_qc_filtered_feature_bc_matrix_uninj_sample2.txt", header = T)
 uninj_s2 <- CreateSeuratObject(counts = uninj_sample2, project = "uninj_sample2", min.cells = 5, min.features = 200)
 
@@ -101,8 +110,6 @@ Onedpi_s2$stim <- "1dpi"
 options(repr.plot.width=8, repr.plot.height=6)
 VlnPlot(Onedpi_s2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-
-
 ##########
 
 Onedpi_sample3 <-read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610/GSM4955364_qc_filtered_feature_bc_matrix_1dpi_sample3.txt", header = T)
@@ -116,7 +123,6 @@ Onedpi_s3$stim <- "1dpi"
 
 options(repr.plot.width=8, repr.plot.height=6)
 VlnPlot(Onedpi_s3, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
 
 ##########
 
@@ -146,7 +152,6 @@ Threedpi_s2$stim <- "3dpi"
 options(repr.plot.width=8, repr.plot.height=6)
 VlnPlot(Threedpi_s2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-
 #########
 
 Sevendpi_sample1 <-read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610/GSM4955367_qc_filtered_feature_bc_matrix_7dpi_sample1.txt", header = T)
@@ -160,9 +165,7 @@ Sevendpi_s1$stim <- "7dpi"
 options(repr.plot.width=8, repr.plot.height=6)
 VlnPlot(Sevendpi_s1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-
 ##########
-
 
 Sevendpi_sample2 <-read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610/GSM4955368_qc_filtered_feature_bc_matrix_7dpi_sample2.txt", header = T)
 Sevendpi_s2 <- CreateSeuratObject(counts = Sevendpi_sample2, project = "7dpi_s2", min.cells = 5, min.features = 200)
@@ -175,9 +178,7 @@ Sevendpi_s2$stim <- "7dpi"
 options(repr.plot.width=8, repr.plot.height=6)
 VlnPlot(Sevendpi_s2, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-
 ##########
-
 
 # normalize and find varible features in the objects
 object_clean_new.list <- lapply(X = c(uninj_s1, uninj_s2, uninj_s3, Onedpi_s1, Onedpi_s2, Onedpi_s3, Threedpi_s1, Threedpi_s2, Sevendpi_s1, Sevendpi_s2), FUN = function(x) {
@@ -211,14 +212,24 @@ DimPlot(integrated_milich, reduction = "umap")
 DefaultAssay(integrated_milich) = "RNA"
 
 
-setwd("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/")
+#setwd("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/")
 
-saveRDS(integrated_milich, "Milich_only_integrated_stim.Rds")
+#saveRDS(integrated_milich, "Milich_only_integrated_stim.Rds")
 
+# Isolate EC only according to the metadata provided by Milich et al.
 
 Milich = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/Milich_only_integrated_stim.Rds")
-Metadata = read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610_barcode_metadata.tsv", sep = "\t")
+Metadata_milich = read.table("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/GSE162610_barcode_metadata.tsv", sep = "\t")
 
+unique(Metadata_milich$celltype)
+#  [1] "Endothelial"     "Div-Myeloid"     "Neutrophil"      "Microglia"       "Ependymal"       "Lymphocyte"  
+
+Endo_Meta = Metadata_milich[grep("Endothelial", Metadata_milich$celltype), ]
+head(Endo_Meta)
+
+cId_Endo_Meta = row.names(Endo_Meta)
+
+DimPlot(data, label=T, cells.highlight=cId_Endo_Meta, cols.highlight = c("cyan"), cols= "grey")
 
 Milich_EC <- subset(Milich, cells = cId_Endo_Meta)
 
@@ -267,7 +278,7 @@ DimPlot(integrated)
 #Milich_only_integrated_stim = Milich_only_integrated_stimEC
 #DimPlot(Milich_only_integrated_stim)
 
-#Milich_only_integrated_stimEC = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/Milich_only_integrated_stimEC.Rds")
+Milich_only_integrated_stimEC = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Milich/Milich_only_integrated_stimEC.Rds")
 #DimPlot(Milich_only_integrated_stimEC, split.by = "orig.ident", ncol = 2)
 #DefaultAssay(Milich_only_integrated_stimEC)
 EC1 = readRDS("/Users/maurizio.aurora/integrated_without_cluster8.rds")
@@ -327,6 +338,7 @@ ggplot(pt4, aes(x = Var2, y = freq, fill = Cluster)) +
   ylab("Proportion") 
 
 
+#Fig S1 Q
 pdf("barplot_Milich_cond_no_eight_integrated_alluvial_only_their_cells_test.pdf", 15, 10)
 gg <- ggplot(pt4,
              aes(x = Var2, stratum = Clusters, alluvium = Clusters,

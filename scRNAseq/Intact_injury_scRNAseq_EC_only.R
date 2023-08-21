@@ -17,286 +17,44 @@ require(BiocStyle)
 library(SingleCellExperiment)
 
 
-#https://satijalab.org/seurat/articles/cell_cycle_vignette.html
 
+#function to plot gene signature sum/mean/median over UMAP.
+#alternative to seurat module score
 
 Plot_sign <- function(Seraut.object, signature, operator = sum, titlename) {
   x <- Seraut.object
   DefaultAssay(x) <- "RNA"
-  
-  x[["Sign_exp"]] <- apply(FetchData(object = x, 
+
+  x[["Sign_exp"]] <- apply(FetchData(object = x,
                                      vars = signature),
                            1,
                            operator)
-  FP <- FeaturePlot(x, reduction = "umap", 
-                    features = 'Sign_exp', 
-                    label = T, 
+  FP <- FeaturePlot(x, reduction = "umap",
+                    features = 'Sign_exp',
+                    label = T,
                     pt.size = 2,
                     order = T,
                     repel = T,
                     cols = c("lightgrey", "blue")) +
     theme(plot.title = element_text(color="blue", size=20, face="bold.italic"),
           plot.subtitle = element_text(color="dodgerblue2", size=8, face="italic"),
-          axis.text.x = element_text(angle = 90, face = "bold", color = 'dodgerblue4', size=7, hjust =1), 
+          axis.text.x = element_text(angle = 90, face = "bold", color = 'dodgerblue4', size=7, hjust =1),
           axis.title.x = element_text(face = "bold", color = "dodgerblue2", size = 10),
           axis.text.y = element_text(angle = 0, face = "bold", color = 'dodgerblue4', size=10),
           axis.title.y = element_text(face = "bold", color = "dodgerblue2", size = 10),
           legend.text = element_text(face = "bold", color = "dodgerblue2", size = 6),
           panel.background = element_rect(fill = "white",colour = "black", size = 1, linetype = "solid")) +
-    #labs(title= titlename, subtitle = paste('',toString(signature), sep=''), 
+    #labs(title= titlename, subtitle = paste('',toString(signature), sep=''),
     labs(title=titlename)
-  #, 
-  #     x = "tSNE 1", y = "tSNE 2") 
+  #,
+  #     x = "tSNE 1", y = "tSNE 2")
   return(FP)
 }
 
 
 
 
-############## Intact
-
-
-sample1_Td='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/COUNTS_reads_mapped_over_mm10_plus_Tomato/1/filtered_feature_bc_matrix'
-
-CellRanger_sample1_Td.count <- Read10X(data.dir = sample1_Td)
-
-S1_Td <- CreateSeuratObject(counts = CellRanger_sample1_Td.count, project = "1", min.cells = 5, min.features = 200)
-S1_Td[["percent.mt"]] <- PercentageFeatureSet(S1_Td, pattern = "^mt-")
-S1_Td[["percent.Rpl"]] <- PercentageFeatureSet(S1_Td, pattern = "Rpl")
-S1_Td$stim <- "1"
-VlnPlot(S1_Td, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
-min_nFeature_RNA = 200 
-max_nFeature_RNA = 7000
-max_percent_MT = 20
-
-S1_Td.subset <- subset(S1_Td, 
-                       subset = nFeature_RNA > min_nFeature_RNA & nFeature_RNA < max_nFeature_RNA & percent.mt < max_percent_MT)
-
-FeatureScatter(S1_Td.subset, feature1 = "nCount_RNA", feature2 = "percent.mt",cols = NULL)
-FeatureScatter(S1_Td.subset, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-
-
-######################### Injury
-
-sample2_Td='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/COUNTS_reads_mapped_over_mm10_plus_Tomato/2/filtered_feature_bc_matrix'
-
-CellRanger_sample2_Td.count <- Read10X(data.dir = sample2_Td)
-S2_Td <- CreateSeuratObject(counts = CellRanger_sample2_Td.count, project = "2", min.cells = 5, min.features = 200)
-
-S2_Td[["percent.mt"]] <- PercentageFeatureSet(S2_Td, pattern = "^mt-")
-S2_Td[["percent.Rpl"]] <- PercentageFeatureSet(S2_Td, pattern = "^Rpl-")
-
-S2_Td$stim <- "2"
-
-VlnPlot(S2_Td, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
-min_nFeature_RNA = 200 
-max_nFeature_RNA = 8000
-max_percent_MT = 20
-
-S2_Td.subset <- subset(S2_Td, 
-                       subset = nFeature_RNA > min_nFeature_RNA & nFeature_RNA < max_nFeature_RNA & percent.mt < max_percent_MT)
-
-FeatureScatter(S2_Td.subset, feature1 = "nCount_RNA", feature2 = "percent.mt",cols = NULL)
-FeatureScatter(S2_Td.subset, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-
-
-########  INTEGRATED 4  ##########################################
-
-
-#https://github.com/satijalab/seurat/issues/2148
-
-#seurat version 3.2.2
-
-integrated_bon1T <- FindIntegrationAnchors(object.list = list(S1_Td.subset, S2_Td.subset), dims = 1:20)
-features.to.integrate = integrated_bon1T@anchor.features
-integrated_bon1T <- IntegrateData(anchorset = integrated_bon1T, dims = 1:20, features.to.integrate = features.to.integrate)
-DefaultAssay(integrated_bon1T) <- "integrated"
-integrated_bon1T <- CellCycleScoring(integrated_bon1T, s.features = s_genes, g2m.features = g2m_genes, set.ident = TRUE)
-# Run the standard workflow for visualization and clustering
-integrated_bon1T <- ScaleData(integrated_bon1T, vars.to.regress = c("percent.mt", "nFeature_RNA", "S.Score", "G2M.Score"),  features = features.to.integrate, verbose = FALSE)
-integrated_bon1T <- RunPCA(integrated_bon1T, npcs = 30, verbose = FALSE)
-# t-SNE and Clustering
-integrated_bon1T <- RunUMAP(integrated_bon1T, reduction = "pca", dims = 1:20)
-integrated_bon1T <- FindNeighbors(integrated_bon1T, reduction = "pca", dims = 1:20)
-integrated_bon1T <- FindClusters(integrated_bon1T, resolution = 0.3)
-DimPlot(integrated_bon1T, reduction = "umap")
-
-# check reporter gene 
-FeaturePlot(integrated_bon1T, "TdTomato", order = T)
-
-# check EC
-FeaturePlot(integrated_bon1T, "Pecam1", order = T)
-FeaturePlot(integrated_bon1T, "Cdh5", order = T)
-
-# check Pericytes
-FeaturePlot(integrated_bon1T, "Rgs5", order = T)
-
-# check LEC
-FeaturePlot(integrated_bon1T, "Lyve1", order = T)
-
-# check MES
-FeaturePlot(integrated_bon1T, "Pdgfra", order = T)
-FeaturePlot(integrated_bon1T, "Pdgfrb", order = T)
-
-# check NK
-FeaturePlot(integrated_bon1T, "Nkg7", order = T)
-
-
-Plot_sign(integrated_bon1T,
-          signature= dividing, 
-          operator = sum, titlename = "dividing")
-
-
-new.cluster.ids.lit1 <- c('EC', 
-                          'EC',
-                          'EC',
-                          'FRC',
-                          'FRC',
-                          'EC',
-                          'EC',
-                          'LEC',
-                          'TCELLS')
-
-
-names(new.cluster.ids.lit1) <- levels(integrated_bon1T)
-renamed <- RenameIdents(integrated_bon1T, new.cluster.ids.lit1)
-
-renamed <- RenameIdents(integrated_bon1T, new.cluster.ids.lit1)
-
-# remove T cells 
-renamed <- subset(object = renamed, idents = "TCELLS", invert = TRUE)
-
-# FigS1 UMAPs
-
-pdf("all_cells_integrated_newcols_newred.pdf", 12, 10)
-
-DimPlot(renamed, cols = c('EC' = '#f56947',
-                          'FIBRO' = '#9FE2BF',
-                          'PERI'= '#0099CC',
-                          'LEC'= '#ffcc00'), pt.size = 5) +
-  theme(legend.position = "none")
-dev.off()
-
-
-pdf("all_cells_integrated_group_by_stim.pdf", 12, 10)
-
-DimPlot(renamed, group.by = "stim", pt.size = 5) +
-  theme(legend.position = "none") +
-  theme(plot.title = element_blank())
-
-dev.off()
-
-
-# FigS1 FeaturePlots
-
-pdf("FP_all_cells_integrated_newcols_Lyve1.pdf")
-FeaturePlot(renamed, "Lyve1", order = T, pt.size = 5)
-dev.off()
-
-pdf("FP_all_cells_integrated_newcols_Pecam1.pdf")
-FeaturePlot(renamed, "Pecam1", order = T, pt.size = 5)
-dev.off()
-
-pdf("FP_all_cells_integrated_newcols_Pdgfra.pdf")
-FeaturePlot(renamed, "Pdgfra", order = T, pt.size = 5)
-dev.off()
-
-pdf("FP_all_cells_integrated_newcols_Tomato.pdf")
-FeaturePlot(renamed, "TdTomato", order = T, pt.size = 5)
-dev.off()
-
-pdf("FP_all_cells_integrated_newcols_Cdh5.pdf")
-FeaturePlot(renamed, "Cdh5", order = T, pt.size = 5)
-dev.off()
-
-pdf("FP_all_cells_integrated_newcols_Rgs5.pdf")
-FeaturePlot(renamed, "Rgs5", order = T, pt.size = 5)
-dev.off()
-
-
-#######################################################
-#######################################################
-#######################################################
-
-
-sample2_Td='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/COUNTS_reads_mapped_over_mm10_plus_Tomato/2/filtered_feature_bc_matrix'
-CellRanger_sample2_Td.count <- Read10X(data.dir = sample2_Td)
-S2_Td <- CreateSeuratObject(counts = CellRanger_sample2_Td.count, project = "2", min.cells = 5, min.features = 200)
-
-S2_Td[["percent.mt"]] <- PercentageFeatureSet(S2_Td, pattern = "^mt-")
-S2_Td[["percent.Rpl"]] <- PercentageFeatureSet(S2_Td, pattern = "^Rpl-")
-
-S2_Td$stim <- "2"
-
-#options(repr.plot.width=8, repr.plot.height=6)
-VlnPlot(S2_Td, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
-min_nFeature_RNA = 200 
-#max_nFeature_RNA = 10000
-max_nFeature_RNA = 8000
-max_percent_MT = 20
-
-S2_Td.subset <- subset(S2_Td, 
-                       subset = nFeature_RNA > min_nFeature_RNA & nFeature_RNA < max_nFeature_RNA & percent.mt < max_percent_MT)
-
-FeatureScatter(S2_Td.subset, feature1 = "nCount_RNA", feature2 = "percent.mt",cols = NULL)
-FeatureScatter(S2_Td.subset, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-
-all.genesS2_Td.subset <- rownames(S2_Td.subset)
-
-S2_Td.subset <- NormalizeData(S2_Td.subset, verbose = FALSE)
-S2_Td.subset <- FindVariableFeatures(S2_Td.subset, selection.method = "vst", nfeatures = 2000)
-S2_Td.subset <- CellCycleScoring(S2_Td.subset, s.features = s_genes, g2m.features = g2m_genes, set.ident = TRUE)
-
-#ScaleDate and regress for MTpercent and nFeature_RNA
-S2_Td.subset <- ScaleData(S2_Td.subset, 
-                          vars.to.regress = c("percent.mt", "nFeature_RNA", "G2M.Score", "S.Score"), 
-                          features = all.genesS2_Td.subset)
-
-
-
-S2_Td.subset@commands$ScaleData.RNA
-
-S2_Td.subset <- RunPCA(S2_Td.subset, npcs = 30, verbose = FALSE)
-# Examine and visualize PCA results a few different ways
-print(S2_Td.subset[["pca"]], dims = 1:5, nfeatures = 5)
-VizDimLoadings(S2_Td.subset, dims = 1:3, reduction = "pca")
-DimPlot(S2_Td.subset, reduction = "pca")
-DimHeatmap(S2_Td.subset, dims = 1, cells = 500, balanced = TRUE)
-DimHeatmap(S2_Td.subset, dims = 1:15, cells = 500, balanced = TRUE)
-
-
-ElbowPlot(S2_Td.subset)
-
-nPC = 20 
-res = 0.1
-
-S2_Td.subset <- FindNeighbors(S2_Td.subset, dims = 1:nPC)
-S2_Td.subset <- FindClusters(S2_Td.subset, resolution = res)
-S2_Td.subset <- RunUMAP(S2_Td.subset, dims = 1:nPC)
-S2_Td.subset <- RunTSNE(S2_Td.subset, dims = 1:nPC)
-
-DimPlot(S2_Td.subset)
-
-FeaturePlot(S2_Td.subset, "Pecam1", order = T, label = T)
-FeaturePlot(S2_Td.subset, "Rgs5", order = T, label = T)
-
-
-S1_Td_cc_EC_peri = subset(S2_Td.subset, idents = c("0", "2"))
-
-
-saveRDS(S1_Td_cc_EC_peri, file = "S2_Td_cc.rds")
-
-
-
-################################################################
-
-################################################################
-
-
-
+############## Intact sample preproc
 
 sample1_Td='/Users/maurizio.aurora/Documents/pep/1_TdTomatoBonanomi/outs/filtered_feature_bc_matrix'
 
@@ -311,18 +69,17 @@ S1_Td$stim <- "1"
 
 VlnPlot(S1_Td, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-min_nFeature_RNA = 200 
+min_nFeature_RNA = 200
 max_nFeature_RNA = 7000
 max_percent_MT = 20
 
-S1_Td.subset <- subset(S1_Td, 
+S1_Td.subset <- subset(S1_Td,
                        subset = nFeature_RNA > min_nFeature_RNA & nFeature_RNA < max_nFeature_RNA & percent.mt < max_percent_MT)
 
 S1_Td.subset <- CellCycleScoring(S1_Td.subset, s.features = s_genes, g2m.features = g2m_genes, set.ident = TRUE)
 
 FeatureScatter(S1_Td.subset, feature1 = "nCount_RNA", feature2 = "percent.mt",cols = NULL)
 FeatureScatter(S1_Td.subset, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-
 
 all.genesS1_Td.subset <- rownames(S1_Td.subset)
 
@@ -331,11 +88,10 @@ S1_Td.subset <- FindVariableFeatures(S1_Td.subset, selection.method = "vst", nfe
 S2_Td.subset <- CellCycleScoring(S2_Td.subset, s.features = s_genes, g2m.features = g2m_genes, set.ident = TRUE)
 
 #ScaleDate and regress for MTpercent and nFeature_RNA
-S1_Td.subset <- ScaleData(S1_Td.subset, 
-                          vars.to.regress = c("percent.mt", "nFeature_RNA", "S.Score", "G2M.Score"), 
+S1_Td.subset <- ScaleData(S1_Td.subset,
+                          vars.to.regress = c("percent.mt", "nFeature_RNA", "S.Score", "G2M.Score"),
                           features = all.genesS1_Td.subset)
 
-head(S1_Td.subset[[]])
 
 S1_Td.subset <- RunPCA(S1_Td.subset, npcs = 30, verbose = FALSE)
 S1_Td.subset <- FindNeighbors(S1_Td.subset, dims = 1:nPC)
@@ -345,14 +101,84 @@ S1_Td.subset <- RunUMAP(S1_Td.subset, dims = 1:nPC)
 FeaturePlot(S1_Td.subset, c("Rgs5"), label = T)
 FeaturePlot(S1_Td.subset, c("Pecam1"), label = T)
 
+#keep only EC and Pericyte clusters
 S1_Td_cc_EC_peri <- subset(S1_Td.subset, idents = c(1,3,4,5))
+
+
+######################### 7D post Injury sample preproc
+
+
+sample2_Td='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/COUNTS_reads_mapped_over_mm10_plus_Tomato/2/filtered_feature_bc_matrix'
+CellRanger_sample2_Td.count <- Read10X(data.dir = sample2_Td)
+S2_Td <- CreateSeuratObject(counts = CellRanger_sample2_Td.count, project = "2", min.cells = 5, min.features = 200)
+
+S2_Td[["percent.mt"]] <- PercentageFeatureSet(S2_Td, pattern = "^mt-")
+S2_Td[["percent.Rpl"]] <- PercentageFeatureSet(S2_Td, pattern = "^Rpl-")
+
+S2_Td$stim <- "2"
+
+VlnPlot(S2_Td, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+min_nFeature_RNA = 200
+max_nFeature_RNA = 8000
+max_percent_MT = 20
+
+S2_Td.subset <- subset(S2_Td,
+                       subset = nFeature_RNA > min_nFeature_RNA & nFeature_RNA < max_nFeature_RNA & percent.mt < max_percent_MT)
+
+FeatureScatter(S2_Td.subset, feature1 = "nCount_RNA", feature2 = "percent.mt",cols = NULL)
+FeatureScatter(S2_Td.subset, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+all.genesS2_Td.subset <- rownames(S2_Td.subset)
+
+S2_Td.subset <- NormalizeData(S2_Td.subset, verbose = FALSE)
+S2_Td.subset <- FindVariableFeatures(S2_Td.subset, selection.method = "vst", nfeatures = 2000)
+S2_Td.subset <- CellCycleScoring(S2_Td.subset, s.features = s_genes, g2m.features = g2m_genes, set.ident = TRUE)
+
+#ScaleDate and regress for MTpercent and nFeature_RNA
+S2_Td.subset <- ScaleData(S2_Td.subset,
+                          vars.to.regress = c("percent.mt", "nFeature_RNA", "G2M.Score", "S.Score"),
+                          features = all.genesS2_Td.subset)
+
+
+
+S2_Td.subset@commands$ScaleData.RNA
+
+S2_Td.subset <- RunPCA(S2_Td.subset, npcs = 30, verbose = FALSE)
+# Examine and visualize PCA results a few different ways
+print(S2_Td.subset[["pca"]], dims = 1:5, nfeatures = 5)
+VizDimLoadings(S2_Td.subset, dims = 1:3, reduction = "pca")
+DimPlot(S2_Td.subset, reduction = "pca")
+DimHeatmap(S2_Td.subset, dims = 1, cells = 500, balanced = TRUE)
+DimHeatmap(S2_Td.subset, dims = 1:15, cells = 500, balanced = TRUE)
+
+ElbowPlot(S2_Td.subset)
+
+nPC = 20
+res = 0.1
+
+S2_Td.subset <- FindNeighbors(S2_Td.subset, dims = 1:nPC)
+S2_Td.subset <- FindClusters(S2_Td.subset, resolution = res)
+S2_Td.subset <- RunUMAP(S2_Td.subset, dims = 1:nPC)
+S2_Td.subset <- RunTSNE(S2_Td.subset, dims = 1:nPC)
+
+FeaturePlot(S2_Td.subset, "Pecam1", order = T, label = T)
+FeaturePlot(S2_Td.subset, "Rgs5", order = T, label = T)
+
+#keep only EC and Pericyte clusters
+S1_Td_cc_EC_peri = subset(S2_Td.subset, idents = c("0", "2"))
+
+saveRDS(S1_Td_cc_EC_peri, file = "S2_Td_cc.rds")
+
+
+########  INTEGRATED  ##########################################
+
+#Integrate intact and injury samples and run the standard workflow for visualization and clustering
 
 
 integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
 
 integrated_3TIP@commands$FindIntegrationAnchors
-
-
 
 # normalize and find varible features in the objects
 object_clean_new.list.bis <- lapply(X = c(S1_Td_cc_EC_peri, S2_Td_cc_EC_peri ), FUN = function(x) {
@@ -373,8 +199,7 @@ DefaultAssay(integrated1) <- "integrated"
 ElbowPlot(integrated1)
 
 #res = 3
-
-#res = 1
+res = 1
 # Run the standard workflow for visualization and clustering
 integrated1 <- ScaleData(integrated, verbose = FALSE)
 integrated1 <- RunPCA(integrated1, npcs = 35, verbose = FALSE)
@@ -395,13 +220,13 @@ DefaultAssay(integrated1) <- "RNA"
 
 FeaturePlot(integrated1, "Plvap", order = TRUE)
 
-head(integrated_3TIP[[]])
+
 
 DefaultAssay(integrated_3TIP) = "integrated"
 
 #integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
 
-# select EC and exclude pericytes
+# select EC and exclude pericytes from following analyses
 
 subs = subset(integrated_3TIP, idents = c("0","1", "2", "3", "4", "5", "6","7","9","10"))
 
@@ -448,14 +273,14 @@ integrated_3TIP_new_undet$CellTypes = Idents(integrated_3TIP_new_undet)
 
 
 
-
 # Fig1 UMAPs
 
+#Fig1 E
 pdf("EC_integrated_group_by_stim_cl8_no_legend.pdf", 12, 10)
 DimPlot(integrated_3TIP_new_undet, group.by = "stim", pt.size = 5) + NoLegend()
 dev.off()
 
-
+#Fig1 D
 pdf("EC_integrated_newcols_cl8_no_legend.pdf", 12, 10)
 DimPlot(integrated_3TIP_new_undet, cols = c('VENOUS_PLVAP+' = '#FF6666',
                                             'VENOUS_PLVAP-' = '#990000',
@@ -474,6 +299,7 @@ dev.off()
 
 # Fig1 FeaturePlots
 
+#Fig1 F
 p_list = FeaturePlot(object = integrated_3TIP_new_undet, features = c("Plvap", "Cldn5"),
                      cols= c("grey", "red", "blue"), blend = TRUE, order = TRUE, pt.size = 5, combine = FALSE)
 
@@ -482,6 +308,8 @@ p_list2<- append(p_list, list(legend = guide_area()), 4)
 layout1<-"
 ABCD
 "
+
+
 pdf("Plvap_Cldn5_explained.pdf", 40, 10)
 wrap_plots(p_list , design = layout1)
 dev.off()
@@ -579,8 +407,9 @@ pathways  = c(pathways_proliferating,
 
 DefaultAssay(integrated_3TIP_new_undet) = "RNA"
 
+# remove INTERMEDIATE celltype
 
-sub_obj <- subset(object = integrated_3TIP_new_undet, idents = "UNDETERMINED", invert = TRUE)
+sub_obj <- subset(object = integrated_3TIP_new_undet, idents = "INTERMEDIATE", invert = TRUE)
 
 samples <- sub_obj
 avgexp = AverageExpression(samples, return.seurat = T)
@@ -713,11 +542,11 @@ CellTypes  = c(pathways_arterial,
 
 
 subs = subset(sub_obj, idents = c('VENOUS_PLVAP+',
-                                              'VENOUS_PLVAP-',
-                                              'BARR_END_CAP',
-                                              'CAPILLARY_PLVAP-',
-                                              'ARTERIAL',
-                                              'CAPILLARY_PLVAP+'))
+                                  'VENOUS_PLVAP-',
+                                  'BARR_END_CAP',
+                                  'CAPILLARY_PLVAP-',
+                                  'ARTERIAL',
+                                  'CAPILLARY_PLVAP+'))
 
 
 sample <- subs
@@ -759,6 +588,8 @@ matched <- grep(paste(toMatch,collapse="|"),
 
 ha = rowAnnotation(foo = anno_mark(at = matches, labels = matched))
 
+# Fig S1 L
+
 pdf('heatmap_conditions_together_small_all_ct_but_tip_small_annotation.pdf')
 pheatmap(sub_samp_ordered1,
          show_rownames = F,
@@ -773,8 +604,44 @@ pheatmap(sub_samp_ordered1,
          right_annotation = ha)
 dev.off()
 
+#Fig S3 H
+pdf("Chga_FP_split.pdf", 10, 5)
+FeaturePlot(sub_obj, "Chga", split.by = "stim",  pt.size =3, order = T)
+dev.off()
+
+#Fig S3 I
+pdf("Cd276_FP_split.pdf", 10, 5)
+FeaturePlot(sub_obj, "Cd276", split.by = "stim",  pt.size =5)
+dev.off()
+
+#KDR vlnplots figure S2 D
+
+#sub_obj = readRDS("integrated_3TIP_new.RDS")
+
+new.cluster.ids.lit <- c('EC',
+                         'EC',
+                         'EC',
+                         'EC',
+                         'EC',
+                         'EC',
+                         'EC',
+                         'EC',
+                         'EC'
+)
+
+names(new.cluster.ids.lit) <- levels(sub_obj)
+temp <- RenameIdents(sub_obj, new.cluster.ids.lit)
+
+
+DefaultAssay(temp) = "RNA"
+pdf("VlnPlot_Kdr_intact_D7_nopoints.pdf", 12, 10)
+VlnPlot(temp, "Kdr", split.by = "stim", cols = c("1" = '#4C9900',"2" = 'purple'), pt.size = 0)+
+  theme(text = element_text(face = "bold"), title = element_text(size=25,face="bold"))+
+  theme(legend.text = element_text(size=25))+
+  theme(legend.key.height= unit(1, 'cm'),
+        legend.key.width= unit(1, 'cm'))
+dev.off()
 
 
 
-# Figure 
 
