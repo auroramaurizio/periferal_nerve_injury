@@ -15,75 +15,35 @@ library(SeuratWrappers)
 library(slingshot)
 require(BiocStyle)
 library(SingleCellExperiment)
-#print(version) R version 3.6.1
-#Bonanomi
 packageVersion("Seurat")
 library(dittoSeq)
 library("ggalluvial")
 
-###
 
 
-integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
+# upload our dataset, only EC
 
-DefaultAssay(integrated_3TIP) = "RNA"
+integrated_EC <-readRDS("integrated_EC.Rds")
+integrated_EC$CellTypes = Idents(integrated_EC)
+integrated_EC <- RunPCA(integrated_EC, npcs = 35, verbose = FALSE)
+integrated_EC <- RunUMAP(integrated_EC, reduction = "pca", dims = 1:35, verbose = FALSE, return.model=TRUE)
 
-DefaultAssay(integrated_3TIP) = "integrated"
-res= 1
-subs <- FindClusters(integrated_3TIP, resolution = res)
+sample1 <- subset(x = integrated_EC, subset = stim == "1")
+sample2 <- subset(x = integrated_EC, subset = stim == "2")
 
-DimPlot(subs, split.by = "stim")
+# upload EC subsets of public peripheral nerve injury datasets.
 
-new.cluster.ids.lit <- c('VENOUS_PLVAP+',
-                         'TIP_1',
-                         'BARR_END_CAP',
-                         'VENOUS_PLVAP+',
-                         'ARTERIAL',
-                         'CAPILLARY_PLVAP-',
-                         'TIP_2',
-                         'VENOUS_PLVAP-',
-                         '8',
-                         'TIP_3',
-                         'CAPILLARY_PLVAP+'
-)
+# The studies:
+# Carr et al. 2019 scRNAseq dataset. GSE120678
+# Toma et al. 2020 dataset. GSE147285
+# Kalinski et al. 2020 dataset. GSE153762
 
-
-names(new.cluster.ids.lit) <- levels(subs)
-integrated_3TIP_new_eight <- RenameIdents(subs, new.cluster.ids.lit)
-
-DimPlot(integrated_3TIP_new_eight)
-
-DefaultAssay(integrated_3TIP_new_eight) = "integrated"
-
-integrated = subset(integrated_3TIP_new_eight, idents = c("8"), invert = TRUE)
-
-DimPlot(integrated)
-
-
-table(Idents(integrated_3TIP_new_eight))
-
-integrated_3TIP_new_eight$CellTypes = Idents(integrated_3TIP_new_eight)
-integrated_3TIP_new_eight <- RunPCA(integrated_3TIP_new_eight, npcs = 35, verbose = FALSE)
-integrated_3TIP_new_eight <- RunUMAP(integrated_3TIP_new_eight, reduction = "pca", dims = 1:35, verbose = FALSE, return.model=TRUE)
-
-sample1 <- subset(x = integrated_3TIP_new_eight, subset = stim == "1")
-sample2 <- subset(x = integrated_3TIP_new_eight, subset = stim == "2")
-
-table(Idents(sample1))
-table(Idents(sample2))
-
-DimPlot(TU)
-
-
-FeaturePlot(TU, "Cdh5", order = T, label = T)
-TU = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Toma/reanalysis/Seurat_objects/EC_Toma_Uninjured.Rds")
-TI = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/Toma/reanalysis/Seurat_objects/EC_Toma_3D.Rds")
+TU = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_12INTERMEDIATE7_scRNA_injury/7_bioinfo/public_data/Toma/reanalysis/Seurat_objects/EC_Toma_Uninjured.Rds")
+TI = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_12INTERMEDIATE7_scRNA_injury/7_bioinfo/public_data/Toma/reanalysis/Seurat_objects/EC_Toma_3D.Rds")
 KI = readRDS("/Users/maurizio.aurora/integrated_EC_Kalinski_no_pericytes.Rds")
-CI = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/fibroblasts_Carr/reanalysis/Seurat_objects/EC_Carr_9D.Rds")
+CI = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_12INTERMEDIATE7_scRNA_injury/7_bioinfo/public_data/fibroblasts_Carr/reanalysis/Seurat_objects/EC_Carr_9D.Rds")
 
 
-
-FeaturePlot(CI, "Cdh5")
 DefaultAssay(sample1) = "RNA"
 DefaultAssay(sample2) = "RNA"
 DefaultAssay(TU) = "RNA"
@@ -98,6 +58,7 @@ TI$stim <- "TOMA_3D"
 KI$stim <- "KALINSKI_3D"
 CI$stim <- "CARR_9D"
 
+#integrate the datasets according to the Seurat standard procedure 
 
 # normalize and find varible features in the objects
 object_clean_new.list <- lapply(X = c(sample1, sample2, CI, KI, TU, TI), FUN = function(x) {
@@ -129,49 +90,46 @@ DimPlot(integrated, reduction = "umap", split.by = "stim", ncol = 3)
 
 DimPlot(integrated, group.by = "stim", split.by = "stim", ncol = 3)
 
-DimPlot(integrated)
+ARTERIAL <-WhichCells(object=integrated_EC, idents="ARTERIAL")
+IMMATURE <-WhichCells(object=integrated_EC, idents="IMMATURE")
+PROLIFERATING <-WhichCells(object=integrated_EC, idents="PROLIFERATING")
+TIP <-WhichCells(object=integrated_EC, idents="TIP")
+eight <-WhichCells(object=integrated_EC, idents="INTERMEDIATE")
+BARR_END_CAP <-WhichCells(object=integrated_EC, idents="BARR_END_CAP")
+VENOUS_PLVAP_M <-WhichCells(object=integrated_EC, idents="VENOUS_PLVAP-")
+VENOUS_PLVAP_P <-WhichCells(object=integrated_EC, idents="VENOUS_PLVAP+")
+CAPILLARY_PLVAP_M <-WhichCells(object=integrated_EC, idents="CAPILLARY_PLVAP-")
+CAPILLARY_PLVAP_P <-WhichCells(object=integrated_EC, idents="CAPILLARY_PLVAP+")
 
-#PERICYTES <-WhichCells(object=sample2, idents="PERI")
-ARTERIAL <-WhichCells(object=integrated_3TIP_new_eight, idents="ARTERIAL")
-TIP_1 <-WhichCells(object=integrated_3TIP_new_eight, idents="TIP_1")
-TIP_2 <-WhichCells(object=integrated_3TIP_new_eight, idents="TIP_2")
-TIP_3 <-WhichCells(object=integrated_3TIP_new_eight, idents="TIP_3")
-eight <-WhichCells(object=integrated_3TIP_new_eight, idents="8")
-BARR_END_CAP <-WhichCells(object=integrated_3TIP_new_eight, idents="BARR_END_CAP")
-VENOUS_PLVAP_M <-WhichCells(object=integrated_3TIP_new_eight, idents="VENOUS_PLVAP-")
-VENOUS_PLVAP_P <-WhichCells(object=integrated_3TIP_new_eight, idents="VENOUS_PLVAP+")
-CAPILLARY_PLVAP_M <-WhichCells(object=integrated_3TIP_new_eight, idents="CAPILLARY_PLVAP-")
-CAPILLARY_PLVAP_P <-WhichCells(object=integrated_3TIP_new_eight, idents="CAPILLARY_PLVAP+")
+DimPlot(integrated, label=T, cells.highlight=IMMATURE, cols.highlight = c("cyan"), cols= "grey", reduction = "umap")
 
-DimPlot(integrated, label=T, cells.highlight=TIP_1, cols.highlight = c("cyan"), cols= "grey", reduction = "umap")
+#rename clusters according to cell assignments
 
-new.cluster.ids <- c('8',
-                     'TIP_1',
+new.cluster.ids <- c('INTERMEDIATE',
+                     'IMMATURE',
                      'VENOUS_PLVAP-',
                      'VENOUS_PLVAP+',
                      'VENOUS_PLVAP+',
                      'VENOUS_PLVAP+',
-                     'TIP_2',
+                     'PROLIFERATING',
                      'ARTERIAL',
                      'CAPILLARY_PLVAP-',
                      'CAPILLARY_PLVAP+',
-                     'TIP_2',
+                     'PROLIFERATING',
                      'BARR_END_CAP',
                      'BARR_END_CAP',
-                     'TIP_3',
+                     'TIP',
                      'BARR_END_CAP',
                      'ARTERIAL',
-                     '8',
-                     '8',
-                     '8',
+                     'INTERMEDIATE',
+                     'INTERMEDIATE',
+                     'INTERMEDIATE',
                      'CAPILLARY_PLVAP-',
                      'VENOUS_PLVAP+')
 
 
-
 names(new.cluster.ids) <- levels(integrated)
 integrated_rn <- RenameIdents(integrated, new.cluster.ids)
-
 
 
 old_names = factor(integrated_rn$stim)
@@ -187,10 +145,8 @@ DimPlot(integrated_rn)
 #select the desired assy
 DefaultAssay(integrated_rn) = "integrated"
 
-integrated_rn = subset(integrated_rn, idents = c("8"), invert = TRUE)
-
-table(integrated_rn$stim)
-
+# remove intermediate cell types as they are not well carachterized
+integrated_rn = subset(integrated_rn, idents = c("INTERMEDIATE"), invert = TRUE)
 DimPlot(integrated_rn)
 old_names = factor(integrated_rn$condition)
 levels(old_names) = c("3D","7D", "9D","0_Intact")
@@ -198,9 +154,9 @@ new.names = as.character(old_names)
 integrated_rn$cond<- new.names
 
 DimPlot(integrated_rn)
-#saveRDS(integrated_rn, "integrated_without_cluster8_.rds")
+#saveRDS(integrated_rn, "integrated_without_clusterINTERMEDIATE.rds")
 
-#integrated_rn = readRDS("/Users/maurizio.aurora/integrated_without_cluster8.rds")
+#integrated_rn = readRDS("/Users/maurizio.aurora/integrated_without_clusterINTERMEDIATE.rds")
 
 DimPlot(integrated_rn)
 pt <- table(Idents(integrated_rn), integrated_rn$condition)
@@ -208,7 +164,7 @@ pt <- as.data.frame(pt)
 
 pt$Cluster <- as.character(pt$Var1)
 colnames(pt) = c("Clusters", "Var2", "Freq", "Cluster")
-pt =pt[!grepl("8", pt$Cluster),]
+pt =pt[!grepl("INTERMEDIATE", pt$Cluster),]
 
 pt0 =pt[grepl("Intact", pt$Var2),]
 pt1 =pt[grepl("3D", pt$Var2),]
@@ -237,10 +193,10 @@ gg <- ggplot(pt4,
                                                                 'BARR_END_CAP' = '#336666',
                                                                 'CAPILLARY_PLVAP-' = '#399933',
                                                                 'CAPILLARY_PLVAP+' = '#99CC33',
-                                                                'TIP_1' = '#6600CC',
-                                                                'TIP_2' = '#FF99CC',
-                                                                'TIP_3' = '#FF00FF',
-                                                                '8' = 'grey',
+                                                                'IMMATURE' = '#6600CC',
+                                                                'PROLIFERATING' = '#FF99CC',
+                                                                'TIP' = '#FF00FF',
+                                                                'INTERMEDIATE' = 'grey',
                                                                 'VENOUS_PLVAP-' = '#990000',
                                                                 'VENOUS_PLVAP+' = '#FF6666'))
 

@@ -176,10 +176,6 @@ saveRDS(S1_Td_cc_EC_peri, file = "S2_Td_cc.rds")
 #Integrate intact and injury samples and run the standard workflow for visualization and clustering
 
 
-integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
-
-integrated_3TIP@commands$FindIntegrationAnchors
-
 # normalize and find varible features in the objects
 object_clean_new.list.bis <- lapply(X = c(S1_Td_cc_EC_peri, S2_Td_cc_EC_peri ), FUN = function(x) {
   x <- NormalizeData(x)
@@ -198,7 +194,6 @@ DefaultAssay(integrated1) <- "integrated"
 
 ElbowPlot(integrated1)
 
-#res = 3
 res = 1
 # Run the standard workflow for visualization and clustering
 integrated1 <- ScaleData(integrated, verbose = FALSE)
@@ -222,27 +217,9 @@ FeaturePlot(integrated1, "Plvap", order = TRUE)
 
 DefaultAssay(integrated1) = "integrated"
 
-#integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
-
 # select EC and exclude pericytes from following analyses
 
-#DimPlot(integrated_3TIP)
-
 subs = subset(integrated1, idents = c("0","1", "2", "3", "4", "5", "6","7","9","10"))
-
-DimPlot(subs, split.by = "stim")
-
-new.cluster.ids.lit <- c('VENOUS_PLVAP+',
-                         'INTERMEDIATE',
-                         'BARR_END_CAP',
-                         'VENOUS_PLVAP+',
-                         'ARTERIAL',
-                         'CAPILLARY_PLVAP-',
-                         'PROLIFERATING',
-                         'VENOUS_PLVAP-',
-                         'TIP',
-                         'CAPILLARY_PLVAP+'
-)
 
 
 # refine cluster calling
@@ -253,14 +230,14 @@ sub <- FindClusters(subs, resolution = res)
 DimPlot(sub, split.by = "stim")
 
 new.cluster.ids.lit <- c('VENOUS_PLVAP+',
-                         'INTERMEDIATE',
+                         'IMMATURE',
                          'BARR_END_CAP',
                          'VENOUS_PLVAP+',
                          'ARTERIAL',
                          'CAPILLARY_PLVAP-',
                          'PROLIFERATING',
                          'VENOUS_PLVAP-',
-                         'UNDETERMINED',
+                         'INTERMEDIATE',
                          'TIP',
                          'CAPILLARY_PLVAP+'
 )
@@ -271,7 +248,7 @@ integrated_3TIP_new_undet <- RenameIdents(sub, new.cluster.ids.lit)
 
 integrated_3TIP_new_undet$CellTypes = Idents(integrated_3TIP_new_undet)
 
-
+saveRDS(integrated_3TIP_new_undet, "integrated_EC.RDS")
 
 # Fig1 UMAPs
 
