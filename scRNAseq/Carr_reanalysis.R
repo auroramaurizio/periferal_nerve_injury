@@ -15,15 +15,27 @@ library(SeuratWrappers)
 library(slingshot)
 require(BiocStyle)
 library(SingleCellExperiment)
-#print(version) R version 3.6.1
-#Bonanomi
 packageVersion("Seurat")
 
 ############################################################
 # Examine 9D post injury beads sample from Carr et al. 2019
 ############################################################
 
+# Carr's dataset comes with Rdata, useful to quickly isolate cell types of interest.
+
+# whole dataset
+all = load("Inj9dBeads.RData")
+
+# only mes cells
+mes = load("Inj9dBeadsMesenchymal.RData")
+
+
+# Still we reanalized it from scratch obtaining matching results.
+
+
 #load full dataset from Carr 9D post injury
+#GSM3408137_Inj_Sciatic_Beads
+
 
 raw_counts_beads <-read.table(gzfile("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/fibroblasts_Carr/GSE120678_RAW/GSM3408137_Inj_Sciatic_Beads.txt.gz"), header=TRUE)
 
@@ -80,16 +92,36 @@ Beads.subset <- RunTSNE(Beads.subset, dims = 1:nPC)
 DimPlot(Beads.subset, reduction = "umap")
 DimPlot(Beads.subset, reduction = "tsne")
 
-FeaturePlot(Beads.subset, c("Pecam1"), order = T, reduction = "umap", label = T) 
-FeaturePlot(Beads.subset, c("Cdh5"), order = T, reduction = "umap", label = T) 
+# Proliferative cell clusters are present in all clusters: EC, mesenchymal cells 
+# and Shwann cells after injury as observed in other studies.
+
+FeaturePlot(Beads.subset, c("Mest", "Mki67","Birc5","Cdk1","Top2a"), order = T, reduction = "umap", label = T)
+
+# schwann cells express "Ngfr" and "Sox10 ...
+FeaturePlot(Beads.subset, c("Ngfr", "Sox10"), order = T, reduction = "umap", label = T)
+
+# mesenchymal cells express "Pdgfra" ...
+FeaturePlot(Beads.subset, c("Pdgfra"), order = T, reduction = "umap", label = T)
+
+# endothelial cells express "Pecam1", "Cdh5", "Cd31", "Esam" ...
+FeaturePlot(Beads.subset, c("Pecam1", "Cdh5", "Cd31", "Esam"), order = T, reduction = "umap", label = T)
+
+# macrophages express "Cd68","Aif1", "Emr1" ...
+FeaturePlot(Beads.subset, c("Cd68","Aif1", "Emr1"), order = T, reduction = "umap", label = T)
+
 
 
 #among all different clusters select only the EC ones 
 EC_Carr_D9 = subset(Beads.subset, idents = c("0", "9", "18", "25", "33", "41"))
-
 
 EC_Carr_D9$stim <- "Carr_9D"
 
 saveRDS(EC_Carr_D9, "EC_Carr_9D.Rds")
 
 
+#among all different clusters select only the Schwann ones 
+Schwann_Carr_D9 = subset(Beads.subset, idents = c("20", "21", "10", "23", "39", "34"))
+
+Schwann_Carr_D9$stim <- "Carr_9D"
+
+saveRDS(Schwann_Carr_D9, "Schwann_Carr_D9.Rds")

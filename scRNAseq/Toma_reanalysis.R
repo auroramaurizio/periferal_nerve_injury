@@ -15,8 +15,6 @@ library(SeuratWrappers)
 library(slingshot)
 require(BiocStyle)
 library(SingleCellExperiment)
-#print(version) R version 3.6.1
-#Bonanomi
 packageVersion("Seurat")
 
 
@@ -102,15 +100,12 @@ FeaturePlot(TU.subset, "Mbp", order = T, reduction = "umap", label = T)
 FeaturePlot(TU.subset, "Plp1", order = T, reduction = "umap", label = T) 
 FeaturePlot(TU.subset, "L1cam", order = T, reduction = "umap", label = T) 
 
-
 #t nk cells
 FeaturePlot(TU.subset, "Cxcr6", order = T, reduction = "umap", label = T) 
 FeaturePlot(TU.subset, "Nkg7", order = T, reduction = "umap", label = T) 
 
-
 #macrophages
 FeaturePlot(TU.subset, "Aif1", order = T, reduction = "umap", label = T) 
-
 
 #among all different clusters select only the EC ones 
 FeaturePlot(TU.subset, "nFeature_RNA", order = T, reduction = "umap", label = T) 

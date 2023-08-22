@@ -14,9 +14,6 @@ library(slingshot)
 require(BiocStyle)
 library(data.table)
 library(SingleCellExperiment)
-#print(version) R version 3.6.1
-#Bonanomi
-#packageVersion("Seurat")
 sessionInfo()
 
 
@@ -76,11 +73,15 @@ min_nFeature_RNA = 200
 max_nFeature_RNA = 7500
 max_percent_MT = 20
 
+
+
 # normalize and find varible features in the objects
 object_clean_new.list <- lapply(X = c(rep1, rep2, rep3 ), FUN = function(x) {
   x <- NormalizeData(x)
   x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
 })
+
+
 
 # find integration anchors
 integrated <- FindIntegrationAnchors(object.list = object_clean_new.list, dims = 1:35)
@@ -105,7 +106,7 @@ DimPlot(integrated, reduction = "umap", split.by = "stim")
 DefaultAssay(integrated) = "RNA"
 
 saveRDS(integrated, "integrated_all_CT_Kalinski.Rds")
-saveRDS(integrated, "integrated_all_CT_Kalinski_bis.Rds")
+#saveRDS(integrated, "integrated_all_CT_Kalinski_bis.Rds")
 
 FeaturePlot(integrated, "Rgs5")
 
