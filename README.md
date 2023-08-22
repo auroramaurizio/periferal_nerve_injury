@@ -17,6 +17,7 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [Merge_EC_MACs_SCHW_MES_Carr.R] (./scRNAseq/Merge_EC_MACs_SCHW_MES_Carr.R) [Cells from different tissues and datasets were merged and clustered]
    * [CellChat_EC_MACs_SCHW_MES_Carr.R] (./scRNAseq/CellChat_EC_MACs_SCHW_MES_Carr.R) [Cell-Cell communication analysis with CellChat. EC, FIBRO, MACS, SCHWANN]
    * [CellChat_EC.R] (./scRNAseq/CellChat_EC.R) [Cell-cell communication analysis with CellChat. EC only]
+   * [dendrogram.R] (./scRNAseq/dendrogram.R) [EC dendrogram representation]
    * [monocle_pseudotime.R](./scRNAseq/monocle_pseudotime.R) [EC pseudotime analysis with monocle2]
    * [dendrogram.R] (./scRNAseq/dendrogram.R) [EC dendrogram representation]
 
