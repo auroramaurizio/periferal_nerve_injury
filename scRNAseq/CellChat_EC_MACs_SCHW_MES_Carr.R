@@ -217,8 +217,8 @@ cluster.rows = TRUE; cluster.cols = TRUE
 color.use <- c(
   'VENOUS_PLVAP+' = '#F8766D', 
   'VENOUS_PLVAP-' = 'brown',
-  'TIP_1' = '#CD9600',
-  'TIP_2' = 'pink',
+  'IMMATURE' = '#CD9600',
+  'PROLIFERATING' = 'pink',
   'BARR_END_CAP' = '#7CAE00',
   'CAPILLARY_PLVAP-' = '#00BE67', 
   'ARTERIAL' = '#00BFC4',
@@ -230,7 +230,7 @@ color.use <- c(
   'LEC'='#FF61CC', 
   'CAPILLARY_PLVAP+' = 'grey', 
   'SCHWANN' = '#DCE961',
-  'TIP_3' = "purple"
+  'TIP' = "purple"
 )[rownames(mat)]
 
 
@@ -273,8 +273,8 @@ cluster.rows = FALSE; cluster.cols = FALSE
 color.use <- c(
   'VENOUS_PLVAP+' = '#F8766D', 
   'VENOUS_PLVAP-' = 'brown',
-  'TIP_1' = '#CD9600',
-  'TIP_2' = 'pink',
+  'IMMATURE' = '#CD9600',
+  'PROLIFERATING' = 'pink',
   'BARR_END_CAP' = '#7CAE00',
   'CAPILLARY_PLVAP-' = '#00BE67', 
   'ARTERIAL' = '#00BFC4',
@@ -286,7 +286,7 @@ color.use <- c(
   'LEC'='#FF61CC', 
   'CAPILLARY_PLVAP+' = 'grey', 
   'SCHWANN' = '#DCE961',
-  'TIP_3' = "purple"
+  'TIP' = "purple"
 )[rownames(mat)]
 
 
@@ -466,8 +466,8 @@ for (i in 1:length(object.list)) {
 gg1 <- netAnalysis_signalingRole_scatter(cellchat_injury, color.use = c('VENOUS_PLVAP+' = '#F8766D',
                                                                         'VENOUS_PLVAP-' = 'brown',
                                                                         'ARTERIAL' = '#00BFC4',
-                                                                        'TIP_1' = '#CD9600',
-                                                                        'TIP_2' = 'pink',
+                                                                        'IMMATURE' = '#CD9600',
+                                                                        'PROLIFERATING' = 'pink',
                                                                         'BARR_END_CAP' = '#7CAE00',
                                                                         'CAPILLARY_PLVAP-' = '#00BE67',
                                                                         'MACROPHAGES' = '#00A9FF',
@@ -478,15 +478,15 @@ gg1 <- netAnalysis_signalingRole_scatter(cellchat_injury, color.use = c('VENOUS_
                                                                         'LEC'='#FF61CC',
                                                                         'CAPILLARY_PLVAP+' = 'grey',
                                                                         'SCHWANN' = '#DCE961',
-                                                                        'TIP_3' = 'purple'))  + xlim(0, 30) + ylim(0, 30)
+                                                                        'TIP' = 'purple'))  + xlim(0, 30) + ylim(0, 30)
 
 
 
 gg2 <- netAnalysis_signalingRole_scatter(cellchat_intact, color.use = c('VENOUS_PLVAP+' = '#F8766D',
                                                                         'VENOUS_PLVAP-' = 'brown',
                                                                         'ARTERIAL' = '#00BFC4',
-                                                                        'TIP_1' = '#CD9600',
-                                                                        'TIP_2' = 'pink',
+                                                                        'IMMATURE' = '#CD9600',
+                                                                        'PROLIFERATING' = 'pink',
                                                                         'BARR_END_CAP' = '#7CAE00',
                                                                         'CAPILLARY_PLVAP-' = '#00BE67',
                                                                         'MACROPHAGES' = '#00A9FF',
@@ -497,7 +497,7 @@ gg2 <- netAnalysis_signalingRole_scatter(cellchat_intact, color.use = c('VENOUS_
                                                                         'LEC'='#FF61CC',
                                                                         'CAPILLARY_PLVAP+' = 'grey',
                                                                         'SCHWANN' = '#DCE961',
-                                                                        'TIP_3' = 'purple'))  + xlim(0, 30) + ylim(0, 30)
+                                                                        'TIP' = 'purple'))  + xlim(0, 30) + ylim(0, 30)
 
 
 pdf("diagonal_injury.pdf")
@@ -523,8 +523,8 @@ netVisual_chord_gene(cellchat, sources.use = "ARTERIAL", targets.use = c(1:15), 
 colors = c('VENOUS_PLVAP+' = '#F8766D',
            'VENOUS_PLVAP-' = 'brown',
            'ARTERIAL' = '#00BFC4',
-           'TIP_1' = '#CD9600',
-           'TIP_2' = 'pink',
+           'IMMATURE' = '#CD9600',
+           'PROLIFERATING' = 'pink',
            'BARR_END_CAP' = '#7CAE00',
            'CAPILLARY_PLVAP-' = '#00BE67',
            'MACROPHAGES' = '#00A9FF',
@@ -535,7 +535,7 @@ colors = c('VENOUS_PLVAP+' = '#F8766D',
            'LEC'='#FF61CC',
            'CAPILLARY_PLVAP+' = 'grey',
            'SCHWANN' = '#DCE961',
-           'TIP_3' = 'purple')
+           'TIP' = 'purple')
 
 
 pathways.show <- c("SEMA3")
