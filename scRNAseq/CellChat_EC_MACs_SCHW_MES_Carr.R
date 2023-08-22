@@ -83,7 +83,7 @@ cellchat_intact <- setIdent(cellchat_intact, ident.use = "labels") # set "labels
 levels(cellchat_intact@idents) # show factor levels
 groupSize <- as.numeric(table(cellchat_intact@idents)) # number of cells in each cell group
 
-CellChatDB <- CellChatDB.mouse # use CellChatDB.human if running on mouse data
+CellChatDB <- CellChatDB.mouse 
 showDatabaseCategory(CellChatDB)
 
 filename_xls <- 'CellChatDB_interactionDB.xlsx'
