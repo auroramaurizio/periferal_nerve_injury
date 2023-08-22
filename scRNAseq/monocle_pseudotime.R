@@ -1,4 +1,4 @@
-library(monocle) # OK
+library(monocle) # 
 suppressPackageStartupMessages(library(SeuratWrappers)) # NO
 suppressPackageStartupMessages(library(Seurat)) # OK
 #suppressPackageStartupMessages(library(SeuratData)) # NO
@@ -9,21 +9,12 @@ suppressPackageStartupMessages(library(future)) # OK
 suppressPackageStartupMessages(library(cowplot)) # OK
 suppressPackageStartupMessages(library(dplyr)) # OK
 
-###################################################################
-getwd()
 
+integrated = readRDS("integrated_3TIP_new.RDS")
 
-integrated = readRDS(file ="/beegfs/scratch/ric.cosr/ric.brendolan/BrendolanA_1280_scRNAseq/dataset/090521/integrated_without_cluster8.rds")
+DimPlot(integrated, split.by = "stim")
 
-#DimPlot(integrated, split.by = "stim")
-
-#DefaultAssay(integrated) = "integrated"
-
-#integrated$CellType = Idents(integrated)
-
-#########################################
-#########################################
-#########################################
+integrated$CellType = Idents(integrated)
 
 var_genes <- integrated[["integrated"]]@var.features
 
@@ -67,7 +58,7 @@ PH <- pheatmap::pheatmap(state_cluster_stat_ordered,
                          fontsize = 30, fontsize_row = 30, fontsize_col = 30,cellwidth=30,cellheight = 30 )
 
 
-pdf("Bonanomi_trajectory_HeatMap_BW.pdf", 20,10)
+pdf("Trajectory_HeatMap_BW.pdf", 20,10)
 PH
 dev.off()
 
@@ -85,15 +76,15 @@ P1 = plot_cell_trajectory(i_monocle2, color_by = "CellType", cell_name_size = 8)
                                                                                          'BARR_END_CAP' = '#336666', 
                                                                                          'CAPILLARY_PLVAP-' = '#399933',
                                                                                          'CAPILLARY_PLVAP+' = '#99CC33',
-                                                                                         'TIP_1' = '#6600CC',
-                                                                                         'TIP_2' = '#FF99CC',
-                                                                                         'TIP_3' = '#FF00FF',
-                                                                                         'eight' = 'grey',
+                                                                                         'IMMATURE' = '#6600CC',
+                                                                                         'PROLIFERATING' = '#FF99CC',
+                                                                                         'TIP' = '#FF00FF',
+                                                                                         'INTERMEDIATE' = 'grey',
                                                                                          'VENOUS_PLVAP-' = '#990000',
                                                                                          'VENOUS_PLVAP+' = '#FF6666'))
 
-
-pdf("Bonanomi_trajectory_CellType.pdf")
+#Fig1 O
+pdf("Trajectory_CellType.pdf")
 P1
 dev.off()
 
@@ -105,8 +96,8 @@ P3 = plot_cell_trajectory(i_monocle2, color_by = "State")+
   theme(legend.title = element_text(size=20,face="bold")) + scale_color_manual(values=c('1' = '#535D87',
                                                                                         '2' = '#7C5D67', 
                                                                                         '3' = '#808B96'))
-
-pdf("Bonanomi_trajectory_state_grey_new.pdf")
+#Fig1 O
+pdf("Trajectory_state.pdf")
 P3
 dev.off()
 
@@ -119,17 +110,13 @@ P4 = plot_cell_trajectory(i_monocle2, color_by = "CellType") + facet_wrap(~CellT
       theme(legend.title = element_text(size=20,face="bold")) + scale_color_manual(values=c('ARTERIAL' = '#0066FF',
                                                                                             'BARR_END_CAP' = '#336666', 
                                                                                             'CAPILLARY_PLVAP-' = '#399933',
-                                                                                            'CAPILLARY_PLVAP+' = '#99CC33',
-                                                                                            'TIP_1' = '#6600CC',
-                                                                                            'TIP_2' = '#FF99CC',
-                                                                                            'TIP_3' = '#FF00FF',
-                                                                                            'eight' = 'grey',
+                                                                                            'IMMATURE' = '#6600CC',
+                                                                                            'PROLIFERATING' = '#FF99CC',
+                                                                                            'TIP' = '#FF00FF',
+                                                                                            'INTERMEDIATE' = 'grey',
                                                                                             'VENOUS_PLVAP-' = '#990000',
                                                                                             'VENOUS_PLVAP+' = '#FF6666'))
-    
-    
-    
-    
+
 pdf("Bonanomi_trajectory_CellType_wrap.pdf", 30, 10) 
 P4
 dev.off()
@@ -140,7 +127,7 @@ dev.off()
     
     GM_state <- function(cds){
       if (length(unique(cds@phenoData@data$State)) > 1){
-        T0_counts <- table(cds@phenoData@data$State, cds@phenoData@data$CellType)[,"TIP_2"]
+        T0_counts <- table(cds@phenoData@data$State, cds@phenoData@data$CellType)[,"PROLIFERATING"]
         return(as.numeric(names(T0_counts)[which
                                            (T0_counts == max(T0_counts))]))
       } else {
@@ -159,13 +146,13 @@ P6 = plot_cell_trajectory(i_monocle2, color_by = "Pseudotime") +
   theme(text = element_text(size=20)) +
   theme(legend.title = element_text(size=20,face="bold"))
 
-
-pdf("Bonanomi_trajectory_Pseudotime.pdf")
+#Fig1 O
+pdf("Trajectory_Pseudotime.pdf")
 P6
 dev.off()
 
 
-
+#Fig1 R
 my_genes <- row.names(subset(fData(i_monocle2),
                              gene_short_name %in% c("Car4", "Mfsd2a", "Mki67", "Apln", "Itgb4", "Ackr1")))
 
@@ -221,9 +208,9 @@ write.table(plot_table$annotation_row, 'Bonanomi_trajectory_Heatmap_branch_point
 
 
 # generate heatmap
+#Fig1 P
 
 # small without gene names
-
 pdf("Bonanomi_trajectory_Heatmap_branch_point_2pc_bp1_2000variablegenes_6clust.pdf", 20, 220)
 plot_genes_branched_heatmap(i_monocle2[var_genes,],
                             branch_point = 1,
@@ -235,7 +222,6 @@ plot_genes_branched_heatmap(i_monocle2[var_genes,],
 dev.off()   
 
 # big with gene names
-
 pdf("Bonanomi_trajectory_Heatmap_branch_point_2pc_bp1_2000variablegenes_6clust.pdf", 20, 220)
 plot_genes_branched_heatmap(i_monocle2[var_genes,],
                             branch_point = 1,

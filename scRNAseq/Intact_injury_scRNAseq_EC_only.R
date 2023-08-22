@@ -220,15 +220,15 @@ DefaultAssay(integrated1) <- "RNA"
 
 FeaturePlot(integrated1, "Plvap", order = TRUE)
 
-
-
-DefaultAssay(integrated_3TIP) = "integrated"
+DefaultAssay(integrated1) = "integrated"
 
 #integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
 
 # select EC and exclude pericytes from following analyses
 
-subs = subset(integrated_3TIP, idents = c("0","1", "2", "3", "4", "5", "6","7","9","10"))
+#DimPlot(integrated_3TIP)
+
+subs = subset(integrated1, idents = c("0","1", "2", "3", "4", "5", "6","7","9","10"))
 
 DimPlot(subs, split.by = "stim")
 
