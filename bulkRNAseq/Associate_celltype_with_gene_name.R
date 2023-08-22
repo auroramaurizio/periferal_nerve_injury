@@ -33,8 +33,8 @@ Idents(object = integrated, cells = IMMATURE) <- 'INTERMEDIATE'
 
 DefaultAssay(integrated) = "RNA"
 
-#isolate intact sample 
-object_clean_new <- subset(x = integrated, subset = stim == "1")
+#isolate D7 PI sample 
+object_clean_new <- subset(x = integrated, subset = stim == "2")
 DefaultAssay(object_clean_new) = "RNA"
 
 #Isolate cluster marker genes
