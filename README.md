@@ -14,6 +14,7 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [Kalinski_reanalysis.R](./scRNASeq/Kalinski_reanalysis.R) [Re-analysis of Kalinski et al. 2020 dataset. GSE153762]
    * [Toma_Carr_Kalinski_Bonanomi_alluvial.R](./scRNAseq/Toma_Carr_Kalinski_Bonanomi_alluvial.R) [Alluvial plot of the relative abundance of EC subtypes in the intact nerve or at different days post injury.]
    * [Milich_EC_label_transfer_alluvial.R](./scRNAseq/Milich_EC_label_transfer_alluvial.R ) [Re-analysis of Milich et al. GSE162610 spinal cord injury dataset]
+   * [Ydens_reanalysis.R](./scRNAseq/Ydens_reanalysis.R)[Re-analyisis of Ydens et al. 2020]
    * [Merge_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/Merge_EC_MACs_SCHW_MES_Carr.R) [Cells from different tissues and datasets were merged and clustered]
    * [CellChat_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/CellChat_EC_MACs_SCHW_MES_Carr.R) [Cell-Cell communication analysis with CellChat. EC, FIBRO, MACS, SCHWANN]
    * [monocle_pseudotime.R](./scRNAseq/monocle_pseudotime.R) [EC pseudotime analysis with monocle2]
