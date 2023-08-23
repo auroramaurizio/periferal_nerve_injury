@@ -23,11 +23,8 @@ packageVersion("Seurat")
 
 # shiny app: https://github.com/millerkaplanlab/MouseSciaticNerve
 
-# Raw transcriptomes of Pdgfra-positive cluster cells from 9-day post-axotomy and control nerves 
 
-
-
-# Still we reanalized it from scratch obtaining matching results.
+# We reanalized it from scratch obtaining matching results.
 
 #######################################################
 # Examine uninjured mesenchymal sample from Carr et al.
