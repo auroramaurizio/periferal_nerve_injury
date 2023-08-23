@@ -17,22 +17,22 @@ require(BiocStyle)
 library(SingleCellExperiment)
 packageVersion("Seurat")
 
-############################################################
-# Examine 9D post injury beads sample from Carr et al. 2019
-############################################################
-
 
 
 # Carr's dataset comes with counts data, as well as a shiny app and Rdata.
 
 # shiny app: https://github.com/millerkaplanlab/MouseSciaticNerve
 
+# Raw transcriptomes of Pdgfra-positive cluster cells from 9-day post-axotomy and control nerves 
+
+
 
 # Still we reanalized it from scratch obtaining matching results.
 
-###########################################
-# Examine uninjured sample from Carr et al.
-###########################################
+#######################################################
+# Examine uninjured mesenchymal sample from Carr et al.
+# Pdgfra-positive mesenchymal clusters from uninjured sciatic nerves processed using myelin removal beads
+#######################################################
 
 raw_counts_uninj <-read.table(gzfile("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/fibroblasts_Carr/GSE120678_RAW/GSM3408139_Uninj_Sciatic_Mesenchymal.txt.gz"))
 
@@ -87,7 +87,7 @@ DimPlot(Uninj.subset, reduction = "umap")
 
 DimPlot(Uninj.subset, reduction = "tsne")
 
-Uninj.subset #679 #879
+
 #(B–E) t-SNEs overlaid for expression of (B) Pdgfra, Pdgfrb, and Col1a1; (C) the perineurial gene Itgb4; (D) the epineurial genes Pcolce2, Ly6c1, Comp, and Cxcl13;
 #and (E) the endoneurial genes Sox9, Etv1, Col26a1, and Osr2. Expression levels are indicated according to the color keys.
 
@@ -155,14 +155,6 @@ differentiating
 plot_grid(p1, p2, p3, nrow = 2)
 
 
-
-
-#FindMarkers will find markers between two different identity groups - you have to specify both identity groups. This is useful for comparing the differences between two specific groups.
-
-#FindAllMarkers will find markers differentially expressed in each identity group by comparing it to all of the others - you don't have to manually define anything. Note that markers may bleed over between closely-related groups - they are not forced to be specific to only one group. This is what most people use (and likely what you want).
-
-#FindConservedMarkers will find markers that are conserved between two groups - this can be useful if you want to find markers that are conserved between a treated and untreated condition for a specific cell type or group of cells. It means they are differentially expressed compared to other groups, but have similar expression between the two groups you're actually comparing.
-
 thresh.use = 0.25
 min.pct = 0.25
 min.diff.pct = -Inf
@@ -186,10 +178,177 @@ Uninj.subset_rn <- RenameIdents(Uninj.subset, new.cluster.ids)
 saveRDS(Uninj.subset_rn, "MES_Carr_intact.Rds")
 
 
+#######################################################
+# Examine injured mesenchymal sample from Carr et al.
+# Pdgfra-positive 9-day post-axotomy mesenchymal cells
+# from sciatic nerves processed using myelin removal beads
+#######################################################
 
-###########################################
-# Examine Injured sample from Carr et al.
-###########################################
+raw_counts_Injury <-read.table(gzfile("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/public_data/fibroblasts_Carr/GSE120678_RAW/GSM3408137_Inj_Sciatic_Mesenchymal.txt.gz"))
+
+rownames(raw_counts_Injury) 
+
+raw_counts_beadss =  raw_counts_beads[-c(1)]
+head(raw_counts_beadss[1:2,1:2])
+
+
+Injury <- CreateSeuratObject(counts = raw_counts_Injury, project = "Injury", min.cells = 5, min.features = 200)
+
+Injury[["percent.mt"]] <- PercentageFeatureSet(Injury, pattern = "^mt-")
+Injury[["percent.Rpl"]] <- PercentageFeatureSet(Injury, pattern = "Rpl")
+
+Injury$stim <- "Injury"
+
+
+VlnPlot(Injury, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+
+min_nFeature_RNA = 200 
+max_nFeature_RNA = 7500
+max_percent_MT = 10
+
+Injury.subset <- subset(Injury, 
+                        subset = nFeature_RNA > min_nFeature_RNA & nFeature_RNA < max_nFeature_RNA & percent.mt < max_percent_MT)
+
+
+FeatureScatter(Injury.subset, feature1 = "nCount_RNA", feature2 = "percent.mt",cols = NULL)
+FeatureScatter(Injury.subset, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+Injury.subset <- NormalizeData(Injury.subset, verbose = FALSE)
+Injury.subset <- FindVariableFeatures(Injury.subset, selection.method = "vst", nfeatures = 2000)
+#ScaleDate and regress for MTpercent and nFeature_RNA
+Injury.subset <- ScaleData(Injury.subset, 
+                           vars.to.regress = c("percent.mt", "nFeature_RNA"))
+
+Injury.subset <- RunPCA(Injury.subset, npcs = 15, verbose = FALSE)
+print(Injury.subset[["pca"]], dims = 1:5, nfeatures = 5)
+VizDimLoadings(Injury.subset, dims = 1:3, reduction = "pca")
+DimPlot(Injury.subset, reduction = "pca")
+DimHeatmap(Injury.subset, dims = 1, cells = 500, balanced = TRUE)
+DimHeatmap(Injury.subset, dims = 1:15, cells = 500, balanced = TRUE)
+ElbowPlot(Injury.subset)
+
+nPC = 15 
+res = 0.5
+
+Injury.subset <- FindNeighbors(Injury.subset, dims = 1:nPC)
+Injury.subset <- FindClusters(Injury.subset, resolution = res)
+
+Injury.subset <- RunUMAP(Injury.subset, dims = 1:nPC)
+Injury.subset <- RunTSNE(Injury.subset, dims = 1:nPC)
+
+DimPlot(Injury.subset, reduction = "umap")
+
+#(B–E) t-SNEs overlaid for expression of (B) Pdgfra, Pdgfrb, and Col1a1; (C) the perineurial gene Itgb4; (D) the epineurial genes Pcolce2, Ly6c1, Comp, and Cxcl13;
+#and (E) the endoneurial genes Sox9, Etv1, Col26a1, and Osr2. Expression levels are indicated according to the color keys.
+
+#Figure 3
+# features <- c("Pdgfra", "Pdgfrb", "Col1a1","Itgb4")
+dividing_genes <- c("Top2a","Cdca3")
+endoneurial_genes <- c("Sox9","Etv1","Col2a1", "Wif1")
+epineurial_genes <- c("Pcolce2","Ly6c1","Comp", "Cxcl13")
+perinurial_genes <- c("Itgb4")
+differentiating_genes <- c("Dlk1","Tnc","Plagl1")
+
+
+FeaturePlot(Injury.subset, features = dividing_genes, order = TRUE, label = T)
+
+FeaturePlot(Injury.subset, features = endoneurial_genes, order = TRUE, label = T)
+
+FeaturePlot(Injury.subset, features = perinurial_genes, order = TRUE, label = T)
+
+FeaturePlot(Injury.subset, features = epineurial_genes, order = TRUE, label = T)
+
+FeaturePlot(Injury.subset, features = epineurial_genes, order = TRUE, label = T)
+
+FeaturePlot(Injury.subset, features = differentiating_genes, order = TRUE, label = T)
+
+
+
+# dividing = 7
+# endonurial= 1,5
+# perinurial = 4
+# epineural = 2,6
+# differentiating = 0,3
+
+new.cluster.ids <- c('MES_DIFF', 
+                     'MES_ENDONEUR',
+                     'MES_EPINEUR',
+                     'MES_DIFF',
+                     'MES_PERI',
+                     'MES_ENDONEUR',
+                     'MES_EPINEUR',
+                     'MES_DIV'
+)
+
+names(new.cluster.ids) <- levels(Injury.subset)
+Injury.subset_rn <- RenameIdents(Injury.subset, new.cluster.ids)
+
+pdf('Carr_injured_umap.pdf')
+DimPlot(Injury.subset_rn, reduction = "umap")
+dev.off()
+
+Plot_sign <- function(Seraut.object, signature, operator = sum, titlename) {
+  x <- Seraut.object
+  DefaultAssay(x) <- "RNA"
+  
+  x[["Sign_exp"]] <- apply(FetchData(object = x, 
+                                     vars = signature),
+                           1,
+                           operator)
+  FP <- FeaturePlot(x, reduction = "umap", 
+                    features = 'Sign_exp', 
+                    label = T, 
+                    pt.size = 2,
+                    order = T,
+                    cols = c("lightgrey", "blue")) +
+    theme(plot.title = element_text(color="blue", size=10, face="bold.italic"),
+          plot.subtitle = element_text(color="dodgerblue2", size=8, face="italic"),
+          axis.text.x = element_text(angle = 90, face = "bold", color = 'dodgerblue4', size=10, hjust =1), 
+          axis.title.x = element_text(face = "bold", color = "dodgerblue2", size = 10),
+          axis.text.y = element_text(angle = 0, face = "bold", color = 'dodgerblue4', size=10),
+          axis.title.y = element_text(face = "bold", color = "dodgerblue2", size = 10),
+          legend.text = element_text(face = "bold", color = "dodgerblue2", size = 10),
+          panel.background = element_rect(fill = "white",colour = "black", size = 1, linetype = "solid")) +
+    #labs(title= titlename, subtitle = paste('',toString(signature), sep=''), 
+    labs(title=titlename)
+  #, 
+  #     x = "tSNE 1", y = "tSNE 2") 
+  return(FP)
+}
+
+
+
+p1 <- Plot_sign(Injury.subset,
+                signature= epineurial_genes, 
+                operator = median, titlename = "Epineurial genes")
+
+p2 <- Plot_sign(Injury.subset,
+                signature= endoneurial_genes, 
+                operator = median, titlename = "Endoneurial genes")
+
+plot_grid(p1, p2, nrow = 2)
+
+
+
+
+thresh.use = 0.25
+min.pct = 0.25
+min.diff.pct = -Inf
+test.use ="wilcox"
+
+cluster.markers = FindAllMarkers(Injury.subset_rn, thresh.use = thresh.use, test.use=test.use, min.pct=min.pct, min.diff.pct=min.diff.pct, only.pos=TRUE)
+
+top10 <- cluster.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+DoHeatmap(Injury.subset_rn, features = top10$gene) + NoLegend()
+
+saveRDS(Injury.subset_rn, "MES_Carr_inj.Rds")
+
+
+########################################################
+# Examine Injured sample from Carr et al. - full dataset
+# 9 day post-injury sciatic nerves processed using myelin removal beads
+#########################################################
 
 
 #load full dataset from Carr D9post injury
@@ -284,3 +443,5 @@ Schwann_Carr_D9 = subset(Beads.subset, idents = c("20", "21", "10", "23", "39", 
 Schwann_Carr_D9$stim <- "Carr_9D"
 
 saveRDS(Schwann_Carr_D9, "Schwann_Carr_D9.Rds")
+
+
