@@ -13,11 +13,14 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [Toma_reanalysis.R](./scRNAseq/Toma_reanalysis.R) [Re-analysis of Toma et al. 2020 dataset. GSE147285]
    * [Kalinski_reanalysis.R](./scRNASeq/Kalinski_reanalysis.R) [Re-analysis of Kalinski et al. 2020 dataset. GSE153762]
    * [Toma_Carr_Kalinski_Bonanomi_alluvial.R](./scRNAseq/Toma_Carr_Kalinski_Bonanomi_alluvial.R) [Alluvial plot of the relative abundance of EC subtypes in the intact nerve or at different days post injury.]
-   * [Milich_EC_label_transfer_alluvial.R](./scRNAseq/Milich_EC_label_transfer_alluvial.R ) [Re-analysis of Milich et al. GSE162610 spinal cord injury dataset]
+   * [Milich_EC_label_transfer_alluvial.R](./scRNAseq/Milich_EC_label_transfer_alluvial.R ) [Re-analysis of Milich et al. 2021 spinal cord injury dataset. GSE162610]
    * [Ydens_reanalysis.R](./scRNAseq/Ydens_reanalysis.R) [Re-analyisis of Ydens et al. 2020]
    * [Merge_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/Merge_EC_MACs_SCHW_MES_Carr.R) [Cells from different tissues and datasets were merged and clustered]
-   * [CellChat_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/CellChat_EC_MACs_SCHW_MES_Carr.R) [Cell-Cell communication analysis with CellChat. EC, FIBRO, MACS, SCHWANN]
+   * [CellChat_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/CellChat_EC_MACs_SCHW_MES_Carr.R) [Cell-Cell communication analysis with CellChat. EC, FIBRO Carr et al. 2019, MACS, SCHWANN]
+   * [Kalucka_reanalysis.R](./scRNAseq/Kalucka_reanalysis.R) [Re-analysis of Kalucka et al. 2020 dataset. GSE99235]
    * [monocle_pseudotime.R](./scRNAseq/monocle_pseudotime.R) [EC pseudotime analysis with monocle2]
+   * [velocity_Injury.ipynb](./scRNAseq/velocity_Injury.ipynb) [7DPI EC RNA velocity analysis with scVelo]
+   * [velocity_Uninjured.ipynb](./scRNAseq/velocity_Uninjured.ipynb) [Intact EC RNA velocity analysis with scVelo]
    * [dendrogram.R](./scRNAseq/dendrogram.R) [EC dendrogram representation]
 
  * [bulkRNAseq](./bulkRNAseq) 
