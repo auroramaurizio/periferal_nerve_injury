@@ -17,6 +17,7 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [Ydens_reanalysis.R](./scRNAseq/Ydens_reanalysis.R) [Re-analyisis of Ydens et al. 2020]
    * [Merge_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/Merge_EC_MACs_SCHW_MES_Carr.R) [Cells from different tissues and datasets were merged and clustered]
    * [CellChat_EC_MACs_SCHW_MES_Carr.R](./scRNAseq/CellChat_EC_MACs_SCHW_MES_Carr.R) [Cell-Cell communication analysis with CellChat. EC, FIBRO Carr et al. 2019, MACS, SCHWANN]
+   * [CellChat_MES.R](./scRNAseq/CellChat_MES.R) [interaction pairs heatmap (Suppl Fig 5 U and V)] 
    * [Kalucka_reanalysis.R](./scRNAseq/Kalucka_reanalysis.R) [Re-analysis of Kalucka et al. 2020 dataset. GSE99235]
    * [monocle_pseudotime.R](./scRNAseq/monocle_pseudotime.R) [EC pseudotime analysis with monocle2]
    * [velocity_Injury.ipynb](./scRNAseq/velocity_Injury.ipynb) [7DPI EC RNA velocity analysis with scVelo]
