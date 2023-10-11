@@ -1,0 +1,554 @@
+---
+title: "cellChat2.0"
+output:
+  html_document:
+    toc: true         # To have the menu on the top left
+    toc_float: true   # To have the menu always present even when scrolling
+    df_print: paged   # I'm not sure
+    highlight: pygments # I'm not sure
+params:
+  variable_features: 2000
+  anchor_features: 3000
+  pca_dims: 30
+  clusters_resolution: .7
+  runcode: 'user'
+  compute: FALSE
+---
+# Env
+```{r, echo=FALSE, include=FALSE}
+# Clear the workspace
+rm(list=setdiff(ls(), "params"))
+set.seed(1234)
+
+# Set knitr options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, include = FALSE)
+
+# Copy required files
+file.copy('/Users/diprima.santo/Documents/San_Raffaele/Code_repository/GitStefano/deg_analysis.R', 
+          "../SOURCE/deg_analysis.R")
+file.copy('/Users/diprima.santo/Documents/San_Raffaele/Code_repository/sc_analysis.R', 
+          "../SOURCE/sc_analysis.R")
+
+# Source the required scripts
+source("../SOURCE/deg_analysis.R")
+source("../SOURCE/sc_analysis.R")
+```
+## Library
+```{r}
+library(Seurat)
+library(CellChat)
+library(plotly)
+```
+# Analysis
+```{r}
+integrated_inj = readRDS("../DATA/Seurat_objects_merged/Injury_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
+integrated_int = readRDS("../DATA/Seurat_objects_merged/Intact_EC_MES_MACS_SCHWANN_forCDB_090222_merged_seurat.Rds")
+integrated_fibro_Bonanomi = readRDS("../DATA/TdTomato_integration_Fibro_intact_d7_d21.rds")
+```
+
+```{r}
+# Assign cell identities
+integrated_int$aurora_cellType_int = Idents(integrated_int)
+integrated_inj$aurora_cellType_inj = Idents(integrated_inj)
+
+# Rename cluster IDs
+new.cluster.ids <- c('MES_EPINEUR',
+                     'MES_PERINEUR',
+                     'MES_ENDONEUR',
+                     "MES_DIVIDING",
+                     "MES_DIFF",
+                     "UNDET",
+                     "MES_DIFF*",
+                     "MES_DIVIDING"
+                     )
+names(new.cluster.ids) <- levels(integrated_fibro_Bonanomi)
+integrated_fibro_Bonanomi = integrated_fibro_Bonanomi
+integrated_fibro_Bonanomi <- RenameIdents(integrated_fibro_Bonanomi, new.cluster.ids)
+integrated_fibro_Bonanomi$SantoCellType = Idents(integrated_fibro_Bonanomi)
+
+```
+
+```{r}
+# Subset data
+integrated_fibro_Bonanomi_Intact = subset(integrated_fibro_Bonanomi, orig.ident == "Injury_intact")
+integrated_fibro_Bonanomi_Inj_D7 = subset(integrated_fibro_Bonanomi, orig.ident == "INJURY_D7")
+```
+
+```{r}
+DefaultAssay(integrated_fibro_Bonanomi_Intact) = "RNA"
+DefaultAssay(integrated_int) = "RNA"
+
+# Normalize and find variable features
+samples_list <- lapply(X = c(integrated_fibro_Bonanomi_Intact, integrated_int), FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = params$variable_features)
+})
+
+# Find integration anchors
+integrated_intact <- FindIntegrationAnchors(object.list = samples_list, dims = 1:params$pca_dims, anchor.features = params$anchor_features)
+features.to.integrate = integrated_intact@anchor.features
+integrated_intact <- IntegrateData(anchorset = integrated_intact, dims = 1:params$pca_dims, features.to.integrate = features.to.integrate)
+DefaultAssay(integrated_intact) <- "integrated"
+```
+
+```{r}
+# Normalize and reduce integration data
+integrated_intact <- ScaleData(integrated_intact, features = rownames(integrated_intact))
+integrated_intact <- RunPCA(integrated_intact, npcs = 50)
+integrated_intact <- RunUMAP(integrated_intact, reduction = "pca", dims = 1:params$pca_dims, n.components = 2L)
+integrated_intact <- FindNeighbors(integrated_intact, reduction = "pca", dims = 1:params$pca_dims)
+integrated_intact <- FindClusters(integrated_intact, resolution = params$clusters_resolution)
+```
+
+```{r}
+integrated_intact_sub = subset(integrated_intact, orig.ident != "Carr_Uninj")
+```
+
+```{r}
+# Adjust future globals size to avoid errors
+options(future.globals.maxSize = 1000 * 1024^2)
+```
+
+```{r}
+DefaultAssay(integrated_fibro_Bonanomi_Inj_D7) = "RNA"
+DefaultAssay(integrated_inj) = "RNA"
+
+# Normalize and find variable features
+samples_list <- lapply(X = c(integrated_fibro_Bonanomi_Inj_D7, integrated_inj), FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = params$variable_features)
+})
+
+# Find integration anchors
+integrated_injury <- FindIntegrationAnchors(object.list = samples_list, dims = 1:params$pca_dims, anchor.features = params$anchor_features)
+features.to.integrate = integrated_injury@anchor.features
+integrated_injury <- IntegrateData(anchorset = integrated_injury, dims = 1:params$pca_dims, features.to.integrate = features.to.integrate)
+DefaultAssay(integrated_injury) <- "integrated"
+```
+
+```{r}
+# Normalize and reduce integration data
+integrated_injury <- ScaleData(integrated_injury, features = rownames(integrated_injury))
+integrated_injury <- RunPCA(integrated_injury, npcs = 50)
+integrated_injury <- RunUMAP(integrated_injury, reduction = "pca", dims = 1:params$pca_dims, n.components = 2L)
+integrated_injury <- FindNeighbors(integrated_injury, reduction = "pca", dims = 1:params$pca_dims)
+integrated_injury <- FindClusters(integrated_injury, resolution = params$clusters_resolution)
+```
+
+```{r}
+integrated_inj_sub = subset(integrated_injury, orig.ident != "Carr_Injury")
+```
+
+```{r}
+# Extract cell type information
+SantoCellType = integrated_inj_sub$SantoCellType
+aurora_cellType_inj = integrated_inj_sub$aurora_cellType_inj
+
+# Combine cell type information into a single vector
+tmp_vector = rbind(SantoCellType, aurora_cellType_inj)
+vector_celltype = c()
+for (i in 1:dim(tmp_vector)[2]){
+  if(is.na(tmp_vector[1,i])){
+    vector_celltype = c(vector_celltype, tmp_vector[2,i])
+  } else {
+    vector_celltype = c(vector_celltype, tmp_vector[1,i])
+  }
+}
+names(vector_celltype) = names(SantoCellType)
+
+# Set cell identities based on combined information
+Idents(integrated_inj_sub) = vector_celltype
+```
+
+
+```{r}
+# Set default assay
+DefaultAssay(integrated_inj_sub) = "RNA"
+
+# Extract normalized data matrix
+count_norm = integrated_inj_sub@assays$RNA@data
+
+# Create metadata
+meta_data <- cbind(rownames(integrated_inj_sub@meta.data), as.data.frame(Idents(integrated_inj_sub)))
+colnames(meta_data)<- c("Cell","labels")
+
+# Create CellChat object
+cellchat_injury <- createCellChat(object = count_norm, meta = meta_data, group.by = "labels")
+cellchat_injury <- setIdent(cellchat_injury, ident.use = "labels")
+
+# Show factor levels of cell labels
+levels(cellchat_injury@idents)
+
+# Compute group sizes
+groupSize <- as.numeric(table(cellchat_injury@idents))
+
+# Set the database in the object
+cellchat_injury@DB <- CellChatDB.mouse
+
+# Subset the data for signaling genes
+cellchat_injury <- subsetData(cellchat_injury)
+future::plan("multiprocess", workers = 6)
+
+# Identify overexpressed genes and interactions
+cellchat_injury <- identifyOverExpressedGenes(cellchat_injury, thresh.p = 0.1)
+cellchat_injury <- identifyOverExpressedInteractions(cellchat_injury)
+
+# Project gene expression data onto PPI network (optional)
+cellchat_injury <- projectData(cellchat_injury, PPI.mouse)
+
+# Compute communication probabilities
+cellchat_injury <- computeCommunProb(cellchat_injury)
+
+# Filter out cell-cell communication with few cells in certain groups
+cellchat_injury <- filterCommunication(cellchat_injury, min.cells = 1)
+cellchat_injury <- computeCommunProbPathway(cellchat_injury, thresh = 1)
+cellchat_injury <- aggregateNet(cellchat_injury)
+```
+
+```{r}
+# Extract cell type information
+SantoCellType = integrated_intact_sub$SantoCellType
+aurora_cellType_int = integrated_intact_sub$aurora_cellType_int
+
+# Combine cell type information into a single vector
+tmp_vector = rbind(SantoCellType, aurora_cellType_int)
+vector_celltype = c()
+for (i in 1:dim(tmp_vector)[2]){
+  if(is.na(tmp_vector[1,i])){
+    vector_celltype = c(vector_celltype, tmp_vector[2,i])
+  } else {
+    vector_celltype = c(vector_celltype, tmp_vector[1,i])
+  }
+}
+names(vector_celltype) = names(aurora_cellType_int)
+
+# Set cell identities based on combined information
+Idents(integrated_intact_sub) = vector_celltype
+```
+
+```{r}
+# Set default assay
+DefaultAssay(integrated_intact_sub) = "RNA"
+
+# Extract normalized data matrix
+count_norm = integrated_intact_sub@assays$RNA@data
+
+# Create metadata
+meta_data <- cbind(rownames(integrated_intact_sub@meta.data), as.data.frame(Idents(integrated_intact_sub)))
+colnames(meta_data)<- c("Cell","labels")
+
+# Create CellChat object
+cellchat_intact <- createCellChat(object = count_norm, meta = meta_data, group.by = "labels")
+cellchat_intact <- setIdent(cellchat_intact, ident.use = "labels")
+
+# Show factor levels of cell labels
+levels(cellchat_intact@idents)
+
+# Compute group sizes
+groupSize <- as.numeric(table(cellchat_intact@idents))
+
+# Set the database in the object
+cellchat_intact@DB <- CellChatDB.mouse
+
+# Subset the data for signaling genes
+cellchat_intact <- subsetData(cellchat_intact)
+future::plan("multiprocess", workers = 4)
+
+# Identify overexpressed genes and interactions
+cellchat_intact <- identifyOverExpressedGenes(cellchat_intact, thresh.p = 0.1)
+cellchat_intact <- identifyOverExpressedInteractions(cellchat_intact)
+cellchat_intact <- projectData(cellchat_intact, PPI.mouse)
+cellchat_intact <- computeCommunProb(cellchat_intact)
+cellchat_intact <- filterCommunication(cellchat_intact, min.cells = 1)
+cellchat_intact <- computeCommunProbPathway(cellchat_intact, thresh = 1)
+cellchat_intact <- aggregateNet(cellchat_intact)
+```
+
+```{r}
+future::plan("multisession", workers = 6)
+```
+
+```{r}
+# Compute network centrality scores
+cellchat_injury <- netAnalysis_computeCentrality(cellchat_injury, slot.name = "netP")
+```
+
+
+```{r}
+# Define colors
+colori = c('VENOUS_PLVAP+' = '#F8766D',
+'VENOUS_PLVAP-' = 'brown',
+'ARTERIAL' = '#00BFC4', 
+'TIP_1' = '#CD9600',
+'TIP_2' = 'pink',
+'BARR_END_CAP' = '#7CAE00',
+'CAPILLARY_PLVAP-' = '#00BE67',
+'MACROPHAGES' = '#00A9FF',
+'MES_DIFF'='#C97398',
+'MES_DIFF*'='#f6367b',
+'MES_DIVIDING'="#FDB756",
+'MES_ENDONEUR'='#7DF3FF',
+'MES_EPINEUR'='#3993D0',
+'MES_PERINEUR'='#4339D0',
+'LEC'='#FF61CC',
+'CAPILLARY_PLVAP+' = 'grey',
+'SCHWANN' = '#DCE961',
+'TIP_3' = 'purple')
+```
+
+## fig5S X
+```{r}
+celltype_cellchat = names(table(cellchat_injury@idents))[names(table(cellchat_injury@idents)) != "UNDET"]
+cellchat_injury_without_UNDET <- subsetCellChat(cellchat_injury, idents.use = celltype_cellchat)
+cellchat_intact_without_UNDET <- subsetCellChat(cellchat_intact, idents.use = celltype_cellchat)
+
+
+# Signaling role analysis
+fig5S_x_2 <- netAnalysis_signalingRole_scatter(cellchat_injury_without_UNDET, color.use = colori)+
+  xlim(0, 60)+
+  ylim(0, 60)+ 
+  scale_size_binned(limits = c(0,4000))
+print(fig5S_x_2)
+
+fig5S_x_1 <- netAnalysis_signalingRole_scatter(cellchat_intact_without_UNDET, color.use = colori)+
+  xlim(0, 60)+
+  ylim(0, 60)+ 
+  scale_size_binned(limits = c(0,4000))
+print(fig5S_x_1)
+
+fig5S_x_2+fig5S_x_1
+```
+
+```{r}
+# Compute group size
+groupSize <- as.numeric(table(cellchat_intact@idents))
+
+# Compute network centrality scores
+cellchat_intact <- netAnalysis_computeCentrality(cellchat_intact, slot.name = "netP")
+
+gg2 <- netVisual_heatmap(cellchat_injury, cluster.cols = T, cluster.rows = T)
+gg2@matrix[is.na(gg2@matrix)] <- 0
+
+gg1 <- netVisual_heatmap(cellchat_intact)
+gg1@matrix_color_mapping <- gg2@matrix_color_mapping
+gg1@matrix[is.na(gg1@matrix)] <- 0
+
+
+```
+
+```{r}
+library(ComplexHeatmap)
+# gg2_orig = gg2
+mat <- gg2@matrix
+mat = mat[rownames(mat)!= "UNDET",colnames(mat)!= "UNDET"]
+mat[is.na(mat)] <- 0
+legend.name <- 'Number of interactions'
+color.heatmap.use <- colorRampPalette(c('dodgerblue4','snow','darkred'))(5)
+font.size = 8
+font.size.title = 10
+title.name = NULL
+cluster.rows = TRUE; cluster.cols = TRUE
+color.use <- c('VENOUS_PLVAP+' = '#F8766D',
+'VENOUS_PLVAP-' = 'brown',
+'ARTERIAL' = '#00BFC4', 
+'TIP_1' = '#CD9600',
+'TIP_2' = 'pink',
+'BARR_END_CAP' = '#7CAE00',
+'CAPILLARY_PLVAP-' = '#00BE67',
+'MACROPHAGES' = '#00A9FF',
+'MES_DIFF'='#C97398',
+'MES_DIFF*'='#f6367b',
+'MES_DIVIDING'="#FDB756",
+'MES_ENDONEUR'='#7DF3FF',
+'MES_EPINEUR'='#3993D0',
+'MES_PERINEUR'='#4339D0',
+'LEC'='#FF61CC',
+'CAPILLARY_PLVAP+' = 'grey',
+'SCHWANN' = '#DCE961',
+'TIP_3' = 'purple',
+'UNDET' = "#4E4E4E")[rownames(mat)]
+#-------------------------
+df<- data.frame(group = colnames(mat)); rownames(df) <- colnames(mat)
+  col_annotation <- HeatmapAnnotation(df = df, col = list(group = color.use),which = "column",
+                                      show_legend = FALSE, show_annotation_name = FALSE,
+                                      simple_anno_size = grid::unit(0.2, "cm"))
+  row_annotation <- HeatmapAnnotation(df = df, col = list(group = color.use), which = "row",
+                                      show_legend = FALSE, show_annotation_name = FALSE,
+                                      simple_anno_size = grid::unit(0.2, "cm"))
+
+  ha1 = rowAnnotation(Strength = anno_barplot(rowSums(abs(mat)), border = FALSE,gp = gpar(fill = color.use, col=color.use)), show_annotation_name = FALSE)
+  ha2 = HeatmapAnnotation(Strength = anno_barplot(colSums(abs(mat)), border = FALSE,gp = gpar(fill = color.use, col=color.use)), show_annotation_name = FALSE)
+
+  # if (sum(abs(mat) > 0) == 1) {
+  #   color.heatmap.use = c("white", color.heatmap.use)
+  # } else {
+  #   mat[mat == 0] <- NA
+  # }
+  ht1 = Heatmap(mat, col = color.heatmap.use, na_col = "white", name = legend.name,
+                show_column_dend = F, show_row_dend = F,
+                bottom_annotation = col_annotation, left_annotation =row_annotation, top_annotation = ha2, right_annotation = ha1,
+                cluster_rows = cluster.rows,cluster_columns = cluster.rows,
+                row_names_side = "left",row_names_rot = 0,row_names_gp = gpar(fontsize = font.size),column_names_gp = gpar(fontsize = font.size),
+               # width = unit(width, "cm"), height = unit(height, "cm"),
+                column_title = title.name,column_title_gp = gpar(fontsize = font.size.title),column_names_rot = 90,
+                row_title = "Sources (Sender)",row_title_gp = gpar(fontsize = font.size.title),row_title_rot = 90,
+                heatmap_legend_param = list(title_gp = gpar(fontsize = 8, fontface = "plain"),title_position = "leftcenter-rot",
+                                            border = NA, #at = colorbar.break,
+                                            legend_height = unit(20, "mm"),labels_gp = gpar(fontsize = 8),grid_width = unit(2, "mm"))
+  )
+(injury_heatmap <- ht1)
+  
+# pdf("../OUTPUT/IMAGES/1_inj_heatmap_n_interactions_senza_UNDET.pdf")
+ht1
+# dev.off()
+
+```
+
+```{r}
+gg1_orig <- gg1
+mat <- gg1_orig@matrix
+mat = mat[rownames(mat)!= "UNDET",colnames(mat)!= "UNDET"]
+mat[is.na(mat)] <- 0
+legend.name <- 'Number of interactions'
+color.heatmap.use <- colorRampPalette(c('dodgerblue4','white','darkred'))(5)
+font.size = 8
+font.size.title = 10
+title.name = NULL
+cluster.rows = FALSE; cluster.cols = FALSE
+color.use <- c('VENOUS_PLVAP+' = '#F8766D',
+'VENOUS_PLVAP-' = 'brown',
+'ARTERIAL' = '#00BFC4', 
+'TIP_1' = '#CD9600',
+'TIP_2' = 'pink',
+'BARR_END_CAP' = '#7CAE00',
+'CAPILLARY_PLVAP-' = '#00BE67',
+'MACROPHAGES' = '#00A9FF',
+'MES_DIFF'='#C97398',
+'MES_DIFF*'='#f6367b',
+'MES_DIVIDING'="#FDB756",
+'MES_ENDONEUR'='#7DF3FF',
+'MES_EPINEUR'='#3993D0',
+'MES_PERINEUR'='#4339D0',
+'LEC'='#FF61CC',
+'CAPILLARY_PLVAP+' = 'grey',
+'SCHWANN' = '#DCE961',
+'TIP_3' = 'purple',
+'UNDET' = "#4E4E4E")[rownames(mat)]
+#-------------------------
+df<- data.frame(group = colnames(mat)); 
+rownames(df) <- colnames(mat)
+col_annotation <- HeatmapAnnotation(df = df, col = list(group = color.use),which = "column",
+                                    show_legend = FALSE, show_annotation_name = FALSE,
+                                    simple_anno_size = grid::unit(0.2, "cm"))
+row_annotation <- HeatmapAnnotation(df = df, col = list(group = color.use), which = "row",
+                                    show_legend = FALSE, show_annotation_name = FALSE,
+                                    simple_anno_size = grid::unit(0.2, "cm"))
+
+ha1 = rowAnnotation(Strength = anno_barplot(rowSums(abs(mat)), 
+                                            ylim = injury_heatmap@right_annotation@anno_list$Strength@fun@data_scale, 
+                                            border = FALSE, gp = gpar(fill = color.use, col=color.use)), 
+                    show_annotation_name = FALSE)
+ha2 = HeatmapAnnotation(Strength = anno_barplot(colSums(abs(mat)), 
+                                                ylim = injury_heatmap@top_annotation@anno_list$Strength@fun@data_scale, 
+                                                border = FALSE,gp = gpar(fill = color.use, col=color.use)), 
+                        show_annotation_name = FALSE)
+
+  # if (sum(abs(mat) > 0) == 1) {
+  #   color.heatmap.use = c("white", color.heatmap.use)
+  # } else {
+  #   mat[mat == 0] <- NA
+  # }
+  ht1 = Heatmap(mat, col = color.heatmap.use, na_col = "white", name = legend.name,
+                bottom_annotation = col_annotation, left_annotation =row_annotation, top_annotation = ha2, right_annotation = ha1,
+                cluster_rows = cluster.rows,cluster_columns = cluster.rows,
+                row_names_side = "left",row_names_rot = 0,
+                row_names_gp = gpar(fontsize = font.size),column_names_gp = gpar(fontsize = font.size),
+               # width = unit(width, "cm"), height = unit(height, "cm"),
+                column_title = title.name,column_title_gp = gpar(fontsize = font.size.title),column_names_rot = 90,
+                row_title = "Sources (Sender)",row_title_gp = gpar(fontsize = font.size.title),row_title_rot = 90,
+                heatmap_legend_param = list(title_gp = gpar(fontsize = 8, fontface = "plain"),title_position = "leftcenter-rot",
+                                            border = NA, #at = colorbar.break,
+                                            legend_height = unit(20, "mm"),labels_gp = gpar(fontsize = 8),grid_width = unit(2, "mm"))
+  )
+ht1@column_order <- c(5,14,4,16,3,1,9,2,7,15,11,13,10,12,17,8,6)
+ht1@row_order <- c(4,5,2,3,7,1,6,16,14,9,10,11,15,13,12,8,17)
+intact_heatmap <- ht1
+intact_heatmap@matrix_color_mapping <- injury_heatmap@matrix_color_mapping
+(intact_heatmap <- ht1)
+
+# pdf("../OUTPUT/IMAGES/1_int_heatmap_n_interactions_senza_UNDET.pdf")
+print(intact_heatmap)
+# dev.off()
+
+```
+
+##merge data
+
+```{r}
+object.list <- list(intact = cellchat_intact, injury = cellchat_injury)
+cellchat <- mergeCellChat(object.list, add.names = names(object.list))
+```
+
+
+```{r}
+cellchat <- computeNetSimilarityPairwise(cellchat, type = "functional")
+cellchat <- netEmbedding(cellchat, type = "functional")
+cellchat <- netClustering(cellchat, type = "functional")
+rankSimilarity(cellchat, type = "functional")
+
+rankSimilarity1 <- rankNet(cellchat, mode = "comparison", stacked = T, do.stat = TRUE)
+rankSimilarity2 <- rankNet(cellchat, mode = "comparison", stacked = F, do.stat = TRUE)
+```
+
+```{r}
+# define a positive dataset, i.e., the dataset with positive fold change against the other dataset
+pos.dataset = "injury"
+# define a char name used for storing the results of differential expression analysis
+features.name = pos.dataset
+# perform differential expression analysis
+cellchat <- identifyOverExpressedGenes(cellchat, group.dataset = "datasets", pos.dataset = pos.dataset, features.name = features.name, only.pos = FALSE, thresh.pc = 0.1, thresh.fc = 0.1, thresh.p = 1)
+#> Use the joint cell labels from the merged CellChat object
+# map the results of differential expression analysis onto the inferred cell-cell communications to easily manage/subset the ligand-receptor pairs of interest
+net <- netMappingDEG(cellchat, features.name = features.name)
+# extract the ligand-receptor pairs with upregulated ligands in LS
+net.up <- subsetCommunication(cellchat, net = net, datasets = "injury",ligand.logFC = 0.2, receptor.logFC = 0.2)
+# extract the ligand-receptor pairs with upregulated ligands and upregulated recetptors in NL, i.e.,downregulated in LS
+net.down <- subsetCommunication(cellchat, net = net, datasets = "intact",ligand.logFC = -0.2, receptor.logFC = -0.2)
+```
+
+# saving tmp data
+```{r}
+save.image("../DATA/TMP.RData")
+load("../DATA/TMP.RData")
+```
+
+# FIG
+## Fig 5 x
+```{r}
+fig5S_x_2+fig5S_x_1
+```
+
+## Fig 5 Y 
+```{r}
+rankSimilarity1 + rankSimilarity2
+```
+
+## FigS5 T
+```{r, fig.height=8}
+# Chord diagram
+object.list_without_UNDET <- list(intact = cellchat_intact_without_UNDET, injury = cellchat_injury_without_UNDET)
+multiple_pathways.show = c("BMP", "EDN", "MK")
+for (pathways.show in multiple_pathways.show){
+  
+  par(mfrow = c(1,2), xpd=TRUE)
+  for (i in 1:length(object.list_without_UNDET)) {
+    netVisual_aggregate(object.list_without_UNDET[[i]], signaling = pathways.show, layout = "chord", 
+                        signaling.name = paste(pathways.show, names(object.list)[i]),color.use = colori)
+  }
+}
+```
+
+```{r}
+
+```
+
