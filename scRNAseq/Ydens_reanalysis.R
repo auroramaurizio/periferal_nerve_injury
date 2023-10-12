@@ -13,9 +13,6 @@ library(SeuratWrappers)
 library(slingshot)
 require(BiocStyle)
 library(SingleCellExperiment)
-#print(version) R version 3.6.1
-#packageVersion("Seurat")
-sessionInfo()
 
 
 ###########################################
