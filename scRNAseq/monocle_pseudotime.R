@@ -1,18 +1,12 @@
-library(monocle) # 
-suppressPackageStartupMessages(library(SeuratWrappers)) # NO
-suppressPackageStartupMessages(library(Seurat)) # OK
-#suppressPackageStartupMessages(library(SeuratData)) # NO
-suppressPackageStartupMessages(library(ggplot2)) # OK
-suppressPackageStartupMessages(library(patchwork)) # OK
-suppressPackageStartupMessages(library(magrittr)) # OK
-suppressPackageStartupMessages(library(future)) # OK
-suppressPackageStartupMessages(library(cowplot)) # OK
-suppressPackageStartupMessages(library(dplyr)) # OK
+library(monocle) 
+library(Seurat)
+library(ggplot2)
+
 
 
 integrated = readRDS("integrated_3TIP_new.RDS")
 
-DimPlot(integrated, split.by = "stim")
+DimPlot(integrated)
 
 integrated$CellType = Idents(integrated)
 
