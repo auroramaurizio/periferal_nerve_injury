@@ -1,7 +1,7 @@
 # Peripheral nerve injury
 scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs mesenchymal barrier compartments in the regenerating nerve*" publication 
 
-### Code Authors: Aurora Maurizio, Stefano de Pretis, Santo Diprima
+#### Code Authors: Aurora Maurizio, Stefano de Pretis, Santo Diprima
  
 ### Raw counts data in GEO. 
 
@@ -32,7 +32,7 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [bulkRNASeq_Cherry.R](./bulkRNAseq/bulkRNASeq_Cherry.R) [DGE analysis of our 7DPI WT and KO Cherry EC samples]
    * [bulkRNASeq_Tomato.R](./bulkRNAseq/bulkRNASeq_Tomato.R) [DGE analysis of our intact, 7 DPI, 14 DPI TdTomato EC samples]
    * [metadata_cherry_tomato.xlsx](./bulkRNAseq/metadata_cherry_tomato.xlsx) [sample metadatda for our Cherry and TdTomato EC samples ]
-   * [bulkRNASeq_Tomato_Corada.R](./bulkRNAseq/bulkRNASeq_Tomato_Corada.R) [DGE analysis of our intact, 7 DPI, 14 DPI TdTomato samples + Corada et al. 2019 embryo and Adult samples ]
+   * [bulkRNASeq_Tomato_Corada.R](./bulkRNAseq/bulkRNASeq_Tomato_Corada.R) [DGE analysis of our intact, 7 DPI, 14 DPI TdTomato samples + Corada et al. 2019 embryo and Adult samples. GSE122564 ]
    * [metadata_tomato_corada.xlsx](./bulkRNAseq/metadata_tomato_corada.xlsx) [sample metadatda for our TdTomato samples and Corada et al. 2019 samples. GSE122564]
    * [EWCE.R](./bulkRNAseq/EWCE.R) [Expression Weighted Cell Type Enrichment analysis to check the distribution of DEGs among EC subtypes]
    * [Associate_celltype_with_gene_name.R](./bulkRNAseq/Associate_celltype_with_gene_name.R) [DEG gene annotation according to scRNAseq expression]
