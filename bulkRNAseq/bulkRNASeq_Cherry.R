@@ -44,7 +44,6 @@ suppressMessages(library("remotes"))
 suppressMessages(library("GeneOverlap"))
 suppressMessages(library('stringr'))
 suppressMessages(library("ggrepel"))
-#install.packages("multcompView", repos="http://R-Forge.R-project.org")
 suppressMessages(library("multcompView"))
 suppressMessages(library("sva"))
 suppressMessages(library("ComplexHeatmap"))
@@ -390,23 +389,6 @@ pheatmap(as.matrix(KOWTac),
          annotation_col = annotation_column_)
 dev.off()
 
-# Fig3 F
-pdf('MiniHeatmap_Angiogenesis_Cherry.pdf')
-pheatmap(as.matrix(KOWTac),
-         main = "Angiogenesis",
-         show_rownames = T,
-         show_colnames = F,
-         cellheight = 45,
-         cellwidth = 45,
-         cluster_rows = F,
-         cluster_cols = F,
-         col=colorRampPalette(rev(brewer.pal(n = 11, name =
-                                               "RdYlBu")))(100),
-         scale = 'row',
-         fontsize = 15,
-         annotation_colors = ann_colors,
-         annotation_col = annotation_column)
-dev.off()
 
 WTac = WT[rownames(WT) %in% interferon_cherry,]
 KOac = KO[rownames(KO) %in% interferon_cherry,]
