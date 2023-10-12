@@ -1,6 +1,8 @@
 # Peripheral nerve injury
 scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs mesenchymal barrier compartments in the regenerating nerve*" publication 
 
+### Code Authors: Aurora Maurizio, Stefano de Pretis, Santo Diprima
+ 
 ### Raw counts data in GEO. 
 
 ## Directory structure
@@ -25,7 +27,6 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [velocity_Injury.ipynb](./scRNAseq/velocity_Injury.ipynb) [7DPI EC RNA velocity analysis with scVelo]
    * [velocity_Uninjured.ipynb](./scRNAseq/velocity_Uninjured.ipynb) [Intact EC RNA velocity analysis with scVelo]
    * [Pdgfrb_velocity_Injury.ipynb](./scRNAseq/Pdgfrb_velocity_Injury.ipynb) [Intact, 7DPI, 21DPI Pdgfrb MES RNA velocity analysis with scVelo]
-   * [dendrogram.R](./scRNAseq/dendrogram.R) [EC dendrogram representation]
 
  * [bulkRNAseq](./bulkRNAseq) 
    * [bulkRNASeq_Cherry.R](./bulkRNAseq/bulkRNASeq_Cherry.R) [DGE analysis of our 7DPI WT and KO Cherry EC samples]
