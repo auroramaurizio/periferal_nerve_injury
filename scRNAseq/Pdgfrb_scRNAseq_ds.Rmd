@@ -1,0 +1,687 @@
+---
+title: "TdTomato"
+output: html_document
+
+# Define parameters for the analysis
+params:
+  min_features: 200
+  min_nFeature_RNA: !r 1e3
+  min_nCount_RNA: !r 2e3
+  max_percent_mt: 10
+  min_percent_mt: .2
+  pca_dims: 30
+  clusters_resolution: .8
+  variable_features: 2000
+  anchor_features: 3000
+---
+
+# Env
+```{r, echo=FALSE}
+knitr::opts_chunk$set(results = FALSE, message=FALSE, warning=FALSE, include = F)
+rm(list=setdiff(ls(), "params"))
+set.seed(1234)
+```
+
+# Library
+```{r, echo=FALSE}
+# Load necessary R packages
+library(Seurat)
+library(ggplot2)
+library(tidyverse)
+library(pheatmap)
+library(reshape2)
+library(CelliD)
+library(plotly)
+library(gridExtra)
+library(ggalluvial)
+library(enrichR)
+library(ggplot2)
+library(stringr)
+```
+
+# Funcitons
+```{r, echo=FALSE}
+# Define custom functions for data analysis
+### Importing data matrix
+importing_data_matrix <- function(path){
+  counts = read.delim(path, h=T)
+  counts <- acast(
+    read.table(gzfile(path), header = TRUE, sep='\t'), formula = gene ~ cell
+    )
+  counts[is.na(counts)] <- 0
+  return(counts)
+}
+
+# Function for normalizing, feature selection, scaling, and PCA
+Norm_scale_PCA <- function(scData){
+  scData <- NormalizeData(scData)
+  scData <- FindVariableFeatures(scData, selection.method = "vst", nfeatures = 2000)
+  scData <- ScaleData(scData, features = rownames(scData))
+  scData <- RunPCA(scData, npcs = 50)
+  print(ElbowPlot(scData, ndims = 50)) # Create an Elbow plot
+  return(scData)
+}
+
+# Function for UMAP clustering
+Umap_cluster <- function(scData){
+  scData <- RunUMAP(scData, reduction = "pca", dims = 1:params$pca_dims, n.components = 3L)
+  scData <- FindNeighbors(scData, reduction = "pca", dims = 1:params$pca_dims)
+  scData <- FindClusters(scData, resolution = params$clusters_resolution)
+  return(scData)
+}
+
+# Define a function to filter cells based on QC criteria
+idx_and_plot_QC_sc <- function(scData){
+  idx <- scData$nFeature_RNA > params$min_nFeature_RNA & 
+    scData$nCount_RNA > params$min_nCount_RNA & 
+    scData$percent.mt < params$max_percent_mt &
+    scData$percent.mt > params$min_percent_mt
+  col <- c(1:2)[1+1*idx]
+  #
+  table(idx)
+  #
+  # Create QC plots (not shown here)
+  # ...
+  return(idx)
+}
+
+enrichListCluster <- function(lista, database_to_use){
+  # lista = List_Cluster_SC
+  setEnrichrSite("Enrichr") # Human genes
+  dbs <- database_to_use
+  Lista_enrichGenes = list()
+  for (i in 1:length(lista)){
+          Lista_enrichGenes[[i]] <- enrichr(lista[[i]], dbs)
+  }
+  names(Lista_enrichGenes) = names(lista)
+  return(Lista_enrichGenes)
+}
+
+enrichListClusterPlot <- function(lista, database_to_use, ...){
+  # lista = results_SN
+   idx = 1
+   lista_plot = list()
+   nomiPlot = c()
+  for (i in lista){
+    for (cont in database_to_use){
+      plot = plotEnrich(i[[cont]], showTerms = 20, numChar = 40, y = "count", 
+                       orderBy = "P.value", title = paste(cont, "\n", "Cluster ", names(lista)[idx]), ...)
+      lista_plot <- append(lista_plot, list(plot))
+      nomiPlot = c(nomiPlot, paste0("Cluster_", names(lista)[idx], "_",cont))
+    }
+    idx =  idx +1
+  }
+   names(lista_plot) = nomiPlot
+   return(lista_plot)
+}
+
+reportMatEnrichCluster <- function(results){
+  df_tmp = c()
+  for (i in 1:length(results)){
+    for (cont in 1:length(results[[i]])){
+      tmp = results[[i]][[cont]]
+      if(!dim(tmp)[1] == 0){
+        tmp$Analysis = names(results[[i]])[cont]
+        tmp$Cluster = names(results)[i]
+        df_tmp = rbind(df_tmp, tmp)
+      }
+    }
+  }
+return(df_tmp)
+}
+
+compute_ratio = function(df){
+  Ratio = c()
+  for (i in df$Overlap){
+    Ratio = c(Ratio, eval(parse(text=i)))
+  }
+  return(Ratio)
+}
+```
+
+# Analysis
+## Integration
+```{r, echo=FALSE}
+# Define paths for data
+INTACT_path = "/beegfs/scratch/ric.cosr/ric.bonanomi/counts_Tomato_ref_BonanomiD_1749_scRNA_nerve/Intact_TdTomato/outs/raw_feature_bc_matrix"
+D7_path = "/beegfs/scratch/ric.cosr/ric.bonanomi/counts_Tomato_ref_BonanomiD_1749_scRNA_nerve/D7_TdTomato/outs/raw_feature_bc_matrix"
+D21_path = "/beegfs/scratch/ric.cosr/ric.bonanomi/counts_Tomato_ref_BonanomiD_1749_scRNA_nerve/D21_TdTomato/outs/raw_feature_bc_matrix"
+
+# Read data from 10X Genomics
+row_counts_INTACT = Read10X(data.dir = INTACT_path)
+scINTACT <- CreateSeuratObject(counts = row_counts_INTACT, project = "Injury_intact")
+
+row_counts_D7 = Read10X(D7_path)
+scD7 <- CreateSeuratObject(row_counts_D7, project = 'INJURY_D7')
+
+row_counts_D21 = Read10X(D21_path)
+scD21 <- CreateSeuratObject(row_counts_D21, project = 'INJURY_D21')
+
+# Calculate the percentage of mitochondrial genes in each cell
+scINTACT[["percent.mt"]] <- PercentageFeatureSet(scINTACT, pattern = "^mt-")
+scD7[["percent.mt"]] <- PercentageFeatureSet(scD7, pattern = "^mt-")
+scD21[["percent.mt"]] <- PercentageFeatureSet(scD21, pattern = "^mt-")
+
+# Apply QC filtering to subsets
+idxINTACT = idx_and_plot_QC_sc(scINTACT)
+idxD7 = idx_and_plot_QC_sc(scD7)
+idxD21 = idx_and_plot_QC_sc(scD21)
+
+# Subset the data based on QC results
+scINTACT_subset = subset(scINTACT, cells = colnames(scINTACT)[idxINTACT])
+scD7_subset = subset(scD7, cells = colnames(scD7)[idxD7])
+scD21_subset = subset(scD21, cells = colnames(scD21)[idxD21])
+
+# Normalize, scale, and perform PCA for the subsets
+scINTACT_subset <- Norm_scale_PCA(scINTACT_subset)
+scD7_subset <- Norm_scale_PCA(scD7_subset)
+scD21_subset <- Norm_scale_PCA(scD21_subset)
+
+# Perform UMAP clustering for the subsets
+scINTACT_subset <- Umap_cluster(scINTACT_subset)
+scD7_subset <- Umap_cluster(scD7_subset)
+scD21_subset <- Umap_cluster(scD21_subset)
+```
+
+```{r}
+# Define custom color palette
+palette_mia = c(
+    '#F0A3FF', #Amethyst
+    '#0075DC', #Blue
+    '#993F00', #Caramel
+    '#4C005C', #Damson
+    '#191919', #Ebony
+    '#005C31', #Forest
+    '#2BCE48', #Green
+    '#FFCC99', #Honeydew
+    '#808080', #Iron
+    '#94FFB5', #Jade
+    '#8F7C00', #Khaki
+    '#9DCC00', #Lime
+    '#C20088', #Mallow
+    '#003380', #Navy
+    '#FFA405', #Orpiment
+    '#FFA8BB', #Pink
+    '#426600'  #Quagmire
+)
+
+```
+
+```{r}
+# Rename cells
+scINTACT_subset <- RenameCells(scINTACT_subset, add.cell.id = "_scINTACT_subset")
+scD7_subset <- RenameCells(scD7_subset, add.cell.id = "_scD7_subset")
+scD21_subset <- RenameCells(scD21_subset, add.cell.id = "_scD21_subset")
+
+```
+
+```{r}
+# Set default assay
+DefaultAssay(scINTACT_subset) = "RNA"
+DefaultAssay(scD7_subset) = "RNA"
+DefaultAssay(scD21_subset) = "RNA"
+
+# Normalize, select variable features, and perform PCA
+samples_list <-
+  lapply(X = c(scINTACT_subset, scD7_subset, scD21_subset),
+         FUN = function(x) {
+           x <- NormalizeData(x)
+           x <- FindVariableFeatures(x,
+                                     selection.method = "vst",
+                                     nfeatures = params$variable_features)
+         })
+
+# Find integration anchors
+integrated <- FindIntegrationAnchors(object.list = samples_list, dims = 1:params$pca_dims, anchor.features = params$anchor_features)
+features.to.integrate = integrated@anchor.features
+integrated <- IntegrateData(anchorset = integrated, dims = 1:params$pca_dims, features.to.integrate = features.to.integrate)
+DefaultAssay(integrated) <- "integrated"
+
+# Normalize, select variable features, scale, run PCA, UMAP, and clustering
+integrated <- FindVariableFeatures(integrated, selection.method = "vst", nfeatures = 2000)
+integrated <- ScaleData(integrated, features = rownames(integrated))
+integrated <- RunPCA(integrated, npcs = 50)
+integrated <- RunUMAP(integrated, reduction = "pca", dims = 1:params$pca_dims, min.dist = 0.5, n.components = 2L)
+integrated <- FindNeighbors(integrated, reduction = "pca", dims = 1:params$pca_dims)
+integrated <- FindClusters(integrated, resolution = params$clusters_resolution)
+
+
+
+for (resolution in c(0.7,0.8, 0.9, 2.5)) {
+  integrated <- FindClusters(integrated, resolution = resolution)
+  integrated@meta.data[paste0("SD_res", resolution)] = integrated@meta.data$seurat_clusters
+}
+```
+
+```{r}
+# Store the integrated data
+integrated_all <- integrated
+```
+
+## Integration MES, PERI, SMC
+
+```{r}
+integrated_MES_PERI_SMC <- integrated_all
+Idents(integrated_MES_PERI_SMC) = integrated_MES_PERI_SMC$SD_res0.7
+integrated_sub_MES_PERI_SMC = subset(integrated_MES_PERI_SMC, idents = c(9,7,13,0,5,11,2,4,1,6,12))
+
+integrated_sub_intact_MES_PERI_SMC = subset(x = integrated_sub_MES_PERI_SMC, subset = orig.ident == "Injury_intact")
+integrated_sub_D7_MES_PERI_SMC = subset(x = integrated_sub_MES_PERI_SMC, subset = orig.ident == "INJURY_D7")
+integrated_sub_21_MES_PERI_SMC = subset(x = integrated_sub_MES_PERI_SMC, subset = orig.ident == "INJURY_D21")
+```
+
+```{r}
+DefaultAssay(integrated_sub_intact_MES_PERI_SMC) = "RNA"
+DefaultAssay(integrated_sub_D7_MES_PERI_SMC) = "RNA"
+DefaultAssay(integrated_sub_21_MES_PERI_SMC) = "RNA"
+  
+  # table(scAurora_2$orig.ident)
+  # normalize and find varible features in the objects
+samples_list <-
+  lapply(X = c(integrated_sub_intact_MES_PERI_SMC, 
+               integrated_sub_D7_MES_PERI_SMC, 
+               integrated_sub_21_MES_PERI_SMC),
+         FUN = function(x) {
+           x <- NormalizeData(x)
+           x <- FindVariableFeatures(x,
+                                     selection.method = "vst",
+                                     nfeatures = params$variable_features)
+         })
+  
+  # find integration anchors
+integrated_new_MES_PERI_SMC <- FindIntegrationAnchors(object.list = samples_list, dims = 1:params$pca_dims, anchor.features = params$anchor_features)
+features.to.integrate = integrated_new_MES_PERI_SMC@anchor.features
+integrated_new_MES_PERI_SMC <- IntegrateData(anchorset = integrated_new_MES_PERI_SMC, dims = 1:params$pca_dims, features.to.integrate = features.to.integrate)
+DefaultAssay(integrated_new_MES_PERI_SMC) <- "integrated"
+```
+
+```{r}
+integrated_new_MES_PERI_SMC <- ScaleData(integrated_new_MES_PERI_SMC, features = rownames(integrated_new_MES_PERI_SMC))
+integrated_new_MES_PERI_SMC <- RunPCA(integrated_new_MES_PERI_SMC, npcs = params$pca_dims)
+integrated_new_MES_PERI_SMC <- RunUMAP(integrated_new_MES_PERI_SMC, reduction = "pca", dims = 1:params$pca_dims, n.components = 2L)
+integrated_new_MES_PERI_SMC <- FindNeighbors(integrated_new_MES_PERI_SMC, reduction = "pca", dims = 1:params$pca_dims)
+integrated_new_MES_PERI_SMC <- FindClusters(integrated_new_MES_PERI_SMC, resolution = params$clusters_resolution)
+```
+
+
+```{r}
+MES_EPINEUR = c(0, 12)
+names(MES_EPINEUR) = rep("MES_EPINEUR", length(MES_EPINEUR))
+
+MES_ENDONEUR = c(1)
+names(MES_ENDONEUR) = rep("MES_ENDONEUR", length(MES_ENDONEUR))
+
+MES_PERINEUR = c(5, 2, 6)
+names(MES_PERINEUR) = rep("MES_PERINEUR", length(MES_PERINEUR))
+
+MES_DIFF = c(4)
+names(MES_DIFF) = rep("MES_DIFF", length(MES_DIFF))
+
+MES_DIFF_star = c(16)
+names(MES_DIFF_star) = rep("MES_DIFF*", length(MES_DIFF_star))
+
+PERICYTE = c(7)
+names(PERICYTE) = rep("PERICYTE", length(PERICYTE))
+
+SMOOTH_MUSCLE_CELL = c(9)
+names(SMOOTH_MUSCLE_CELL) = rep("SMOOTH_MUSCLE_CELL", length(SMOOTH_MUSCLE_CELL))
+
+MES_DIVIDING = c(14)
+names(MES_DIVIDING) = rep("MES_DIVIDING", length(MES_DIVIDING))
+
+Undet = c(11)
+names(Undet) = rep("UNDET", length(Undet))
+
+cluster = c(MES_EPINEUR, MES_ENDONEUR,MES_PERINEUR, MES_DIFF,MES_DIFF_star,   PERICYTE, SMOOTH_MUSCLE_CELL, MES_DIVIDING, Undet)
+label = names(cluster)
+names(label) = cluster
+
+# Rename identity classes
+integrated_new_MES_PERI_SMC_assigned = integrated_new_MES_PERI_SMC
+integrated_new_MES_PERI_SMC_assigned <- RenameIdents(integrated_new_MES_PERI_SMC_assigned, label)
+integrated_new_MES_PERI_SMC_assigned$subcelltype <- Idents(integrated_new_MES_PERI_SMC_assigned)
+integrated_new_MES_PERI_SMC_assigned_cleaned <- subset(integrated_new_MES_PERI_SMC_assigned, subcelltype != "UNDET")
+```
+
+## Integration only MES
+
+```{r}
+# Subset integrated_all using specific cluster numbers
+integrated <- subset(integrated_all, SD_res0.8 %in% c(12, 0, 11, 16, 4, 1, 14, 5, 2, 6))
+intact_scVelo = subset(integrated, orig.ident == "Injury_intact")
+D7_scVelo = subset(integrated, orig.ident == "INJURY_D7")
+D21_scVelo = subset(integrated, orig.ident == "INJURY_D21")
+```
+
+```{r}
+# Set default assay for scVelo objects
+DefaultAssay(intact_scVelo) = "RNA"
+DefaultAssay(D7_scVelo) = "RNA"
+DefaultAssay(D21_scVelo) = "RNA"
+
+# Normalize and find variable features in the objects
+samples_list <-
+  lapply(X = c(intact_scVelo, D7_scVelo, D21_scVelo),
+         FUN = function(x) {
+           x <- NormalizeData(x)
+           x <- FindVariableFeatures(x,
+                                     selection.method = "vst",
+                                     nfeatures = params$variable_features)
+         })
+  
+# Find integration anchors
+integrated <- FindIntegrationAnchors(object.list = samples_list, dims = 1:params$pca_dims, anchor.features = params$anchor_features)
+features.to.integrate = integrated@anchor.features
+integrated <- IntegrateData(anchorset = integrated, dims = 1:params$pca_dims, features.to.integrate = features.to.integrate)
+DefaultAssay(integrated) <- "integrated"
+
+
+# Further processing of the integrated object
+integrated <- FindVariableFeatures(integrated, selection.method = "vst", nfeatures = 2000)
+integrated <- ScaleData(integrated, features = rownames(integrated))
+integrated <- RunPCA(integrated, npcs = 50)
+integrated <- RunUMAP(integrated, reduction = "pca", dims = 1:params$pca_dims, n.components = 3L)
+integrated <- FindNeighbors(integrated, reduction = "pca", dims = 1:params$pca_dims)
+integrated <- FindClusters(integrated, resolution = params$clusters_resolution)
+
+for (resolution in c(0.7,0.8, 0.9, 1, 0.4, 1.5, 2, 2.5, 0.2, 0.6)) {
+  integrated <- FindClusters(integrated, resolution = resolution)
+  integrated@meta.data[paste0("SD_res", resolution)] = integrated@meta.data$seurat_clusters
+}
+DimPlot(integrated)
+```
+
+```{r}
+# Define new cluster IDs
+new.cluster.ids <- c('MES_EPINEUR',
+                     'MES_ENDONEUR',
+                     'MES_PERINEUR',
+                     "MES_PERINEUR",
+                     "MES_DIFF",
+                     "UNDET",
+                     "MES_DIVIDING",
+                     'MES_EPINEUR',
+                     'MES_DIFF*',
+                     'MES_DIVIDING'
+                     )
+
+# Assign the new cluster IDs to levels of the integrated object
+names(new.cluster.ids) <- levels(integrated)
+
+# Rename cluster IDs in the integrated object
+integrated_new_Idents <- RenameIdents(integrated, new.cluster.ids)
+
+# Create a copy of the integrated object without UNDET cluster
+integrated_new_Idents$FinalAssign <- Idents(integrated_new_Idents)
+integrated_new_Idents <- subset(integrated_new_Idents, FinalAssign != "UNDET")
+DefaultAssay(integrated_new_Idents) <- "RNA"
+```
+
+```{r}
+marker <- FindAllMarkers(integrated_new_Idents)
+```
+
+## For scVelo
+```{r}
+intact_scVelo = integrated$SD_res0.6[names(integrated$SD_res0.6) %in% colnames(scINTACT_subset)]
+df_scVelo = as.data.frame(cbind(names(intact_scVelo), intact_scVelo))
+rownames(df_scVelo) = NULL
+# write.csv(df_scVelo, "/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_df_intact_cluster_cell_scVelo.csv")
+
+D7_scVelo = integrated$SD_res0.6[names(integrated$SD_res0.6) %in% colnames(scD7_subset)]
+df_scVelo_D7 = as.data.frame(cbind(names(D7_scVelo), D7_scVelo))
+rownames(df_scVelo_D7) = NULL
+# write.csv(df_scVelo_D7, "/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_df_D7_cluster_cell_scVelo.csv")
+
+D21_scVelo = integrated$SD_res0.6[names(integrated$SD_res0.6) %in% colnames(scD21_subset)]
+df_scVelo_D21 = as.data.frame(cbind(names(D21_scVelo), D21_scVelo))
+rownames(df_scVelo_D21) = NULL
+# write.csv(df_scVelo_D21, "/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_df_D21_cluster_cell_scVelo.csv")
+
+integrated_scVelo = integrated$SD_res0.6[names(integrated$SD_res0.6)]
+df_scVelo_integrated = as.data.frame(cbind(names(integrated_scVelo), integrated_scVelo))
+rownames(df_scVelo_integrated) = NULL
+# write.csv(df_scVelo_integrated, "/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_df_integrated_cluster_cell_scVelo.csv")
+
+```
+
+
+```{r}
+library(Seurat)
+
+object_uninj <- subset(x = integrated, subset = orig.ident == "Injury_intact")
+Idents(object_uninj) = object_uninj$SD_res0.6
+# write.csv(object_uninj[["umap"]]@cell.embeddings, file='/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_3D_uninj_cell_umap.csv')
+
+object_D7 <- subset(x = integrated, subset = orig.ident == "INJURY_D7")
+Idents(object_D7) = object_D7$SD_res0.6
+# write.csv(object_D7[["umap"]]@cell.embeddings, file='/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_3D_D7_cell_umap.csv')
+
+object_D21 <- subset(x = integrated, subset = orig.ident == "INJURY_D21")
+Idents(object_D21) = object_D21$SD_res0.6
+# write.csv(object_D21[["umap"]]@cell.embeddings, file='/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_3D_D21_cell_umap.csv')
+
+object_integrated <- integrated
+Idents(object_integrated) = object_integrated$SD_res0.6
+# write.csv(object_integrated[["umap"]]@cell.embeddings, file='/beegfs/scratch/ric.cosr/ric.bonanomi/BonanomiD_1749_scRNA_nerve/R_DATA/Clusring_ad_Hoc_3D_integrated_cell_umap.csv')
+```
+
+
+
+## Dendogram
+```{r}
+# Splitting
+tmp_integrated = integrated_new_Idents
+tmp_integrated$orig.ident.merge = "NULL"
+for(i in levels(as.factor(tmp_integrated$orig.ident))){
+  for(j in levels(Idents(tmp_integrated))){
+    tmp_integrated$orig.ident.merge[tmp_integrated$orig.ident == i & Idents(tmp_integrated) == j] = paste0(substr(i,8, nchar(i)),"_",j)
+  }
+}
+table(tmp_integrated$orig.ident.merge)
+```
+
+```{r}
+# Subsetting
+intresting_time_point_and_celltype = c( "intact_MES_ENDONEUR",
+                                        "intact_MES_EPINEUR",
+                                        "intact_MES_PERINEUR",
+                                        "D7_MES_DIFF",
+                                        "D7_MES_DIFF*",
+                                        "D7_MES_EPINEUR",
+                                        "D7_MES_DIVIDING",
+                                        "D7_MES_PERINEUR",
+                                        "D7_MES_ENDONEUR",
+                                        "D21_MES_EPINEUR",
+                                        "D21_MES_PERINEUR",
+                                        "D21_MES_DIFF",
+                                        "D21_MES_ENDONEUR",
+                                        "D21_MES_DIVIDING",
+                                        "D21_MES_DIFF*"
+                                       )
+tissues_merged = subset(tmp_integrated, orig.ident.merge %in% intresting_time_point_and_celltype)
+Idents(tissues_merged) <- tissues_merged$orig.ident.merge
+# ()
+tissues_merged = tissues_merged
+# Find marker
+N_top <- 200
+tissue_marks <- FindAllMarkers(tissues_merged, max.cells.per.ident = 1e3 )
+best_markers <- with(tissue_marks[order(tissue_marks$avg_log2FC),], sapply(split(gene, cluster), head, n=N_top))
+str(best_marker_genes <- unique(c(best_markers)))
+tissues_merged$celltype = Idents(tissues_merged)
+tissues_merged = subset(tissues_merged)
+tissues_merged <- ScaleData(tissues_merged, features = rownames(tissues_merged))
+avgexpr_merged <- AverageExpression(tissues_merged, group.by = 'celltype', slot='scale.data',
+                                    features = unlist(best_marker_genes))
+
+length(unlist(best_marker_genes))
+
+
+library(pvclust)
+
+# install.packages("pvclust")
+pvclust_merged_RNA <- pvclust(avgexpr_merged$RNA, 
+                              method.hclust = 'complete', method.dist = 'correlation')
+```
+
+
+## PseudoBulk
+
+```{r}
+integrated_orig.idents <- integrated_new_Idents
+Idents(integrated_orig.idents) <- integrated_orig.idents$orig.ident
+markers_D21vsIntact <- FindMarkers(integrated_orig.idents, ident.1 = "INJURY_D21", ident.2 ='Injury_intact', assay = 'RNA',min.ptc = 0.25)
+markers_D7vsIntact <- FindMarkers(integrated_orig.idents, ident.1 = "INJURY_D7", ident.2 ='Injury_intact', assay = 'RNA',min.ptc = 0.25)
+markers_D21vsD7 <- FindMarkers(integrated_orig.idents, ident.1 = "INJURY_D21", ident.2 ='INJURY_D7', assay = 'RNA',min.ptc = 0.25)
+```
+
+```{r}
+markers_D21vsIntact_down = rownames(subset(markers_D21vsIntact, avg_log2FC < -0.5 & p_val_adj < 0.05))
+markers_D7vsIntact_down = rownames(subset(markers_D7vsIntact, avg_log2FC < -0.5 & p_val_adj < 0.05))
+markers_D21vsD7_down = rownames(subset(markers_D21vsD7, avg_log2FC < -0.5 & p_val_adj < 0.05))
+
+markers_D21vsIntact_up = rownames(subset(markers_D21vsIntact, avg_log2FC > 0.5 & p_val_adj < 0.05))
+markers_D7vsIntact_up = rownames(subset(markers_D7vsIntact, avg_log2FC > 0.5 & p_val_adj < 0.05))
+markers_D21vsD7_up = rownames(subset(markers_D21vsD7, avg_log2FC > 0.5 & p_val_adj < 0.05))
+
+
+degs_list = list(markers_D21vsIntact_down = markers_D21vsIntact_down, markers_D7vsIntact_down = markers_D7vsIntact_down, markers_D21vsD7_down = markers_D21vsD7_down,
+                 markers_D21vsIntact_up = markers_D21vsIntact_up, markers_D7vsIntact_up = markers_D7vsIntact_up, markers_D21vsD7_up = markers_D21vsD7_up)
+
+database_to_use = c("GO_Biological_Process_2021","GO_Molecular_Function_2021",
+                  "GO_Cellular_Component_2021","KEGG_2019_Mouse" , "Reactome_2016")
+enrichment = enrichListCluster(degs_list, database_to_use)
+
+```
+
+## DotPlot
+
+```{r}
+df = read.csv2("../DATA/selected_GO_from_3-go selected UP D7-D21.csv")
+
+
+df$Ratio = compute_ratio(df)
+colnames(df)[4] <- "Comparison"
+df$Comparison <- ifelse(df$Comparison == "UP D7 vs intact", "D7", "D21")
+df$Adjusted.P.value <- as.numeric(gsub(",", "\\.", df$Adjusted.P.value))
+
+levels_to_use = c("extracellular matrix organization (GO:0030198)",
+                                      "TGF-beta regulation of extracellular matrix",
+                                      "regulation of epithelial to mesenchymal transition (GO:0010717)", 
+                                      "Myc Targets V1",
+                                      "translation (GO:0006412)", 
+                                      "Interleukin-4 regulation of apoptosis",
+                                      "Signaling by PDGF",
+                                      "Angiogenesis",
+                                      "TNF-alpha Signaling via NF-kB",
+                                      "IL-2/STAT5 Signaling", 
+                                      "cell-cell junction assembly (GO:0007043)", 
+                                      "maintenance of blood-brain barrier (GO:0035633)", 
+                                      "positive regulation of response to wounding (GO:1903036)", 
+                                      "positive regulation of cell migration (GO:0030335)",
+                                      "protein localization to cell-cell junction (GO:0150105)"
+                                      )
+
+
+df$log10_padj <- -log10(as.numeric(df$Adjusted.P.value))
+df$Term <- factor(df$Term, levels = rev(levels_to_use))
+p <- ggplot(df, aes(x = factor(Comparison, levels = c("D7", "D21")),  y = Term))+
+  geom_point(mapping = aes_string(size = "Ratio", color = "log10_padj"))+
+  scale_size(range=c(1,7.5))+
+  scale_color_gradientn(colours = c('snow', 'pink','red','darkred','black'))+ 
+  theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust=1))
+```
+
+# Fig 5
+## P
+```{r}
+DimPlot(integrated_new_Idents, label = FALSE, cols = c('MES_EPINEUR' = '#3993D0',
+        'MES_ENDONEUR' = '#7DF3FF',
+        'MES_PERINEUR' = '#4339D0',
+        'MES_DIFF' = '#C97398',
+        'MES_DIVIDING' = "#FFB246",
+        'MES_DIFF*' = '#F6367B'), pt.size = 2)
+getwd()
+```
+
+## R
+```{r}
+integrated_new_Idents$FinalCellType = Idents(integrated_new_Idents)
+
+
+pt <- table(Idents(integrated_new_Idents), integrated_new_Idents$orig.ident)
+pt_percet = as.matrix(pt)
+tot = colSums(pt_percet)
+
+pt <- as.data.frame(pt)
+pt$Cluster <- as.character(pt$Var1)
+pt$Group=paste(pt$Cluster,pt$Var2)
+colnames(pt)[2] = "Time_point"
+
+vettore_percentuali = c()
+for (i in 1:length(pt$Freq)){
+  if (pt$Time_point[i] == "INJURY_D21"){
+    vettore_percentuali = c(vettore_percentuali,(pt$Freq[i]/tot[1])*100)
+  } else if (pt$Time_point[i] == "INJURY_D7"){
+    vettore_percentuali = c(vettore_percentuali,(pt$Freq[i]/tot[2])*100)
+  }else if (pt$Time_point[i] == "Injury_intact"){
+    vettore_percentuali = c(vettore_percentuali,(pt$Freq[i]/tot[3])*100)
+  }
+}
+
+pt$Freq_percent = vettore_percentuali
+
+ggplot(pt,aes(x = Time_point, stratum = Cluster, alluvium = Cluster,y = Freq_percent,fill = Cluster)) +
+  scale_x_discrete(limits = rev(levels(as.factor(pt$Time_point))))+
+  geom_stratum(alpha = .9) +
+  geom_flow(alpha = 0.01) + 
+  theme_bw(base_size = 15) +
+  geom_flow(stat = "alluvium", lode.guidance = "forward") +
+  scale_fill_manual(values=c(
+  'MES_EPINEUR' = '#3993D0',
+  'MES_ENDONEUR' = '#7DF3FF',
+  'MES_PERINEUR' = '#4339D0',
+  'MES_DIFF' = '#C97398',
+  'MES_DIVIDING' = "#FFB246",
+  'MES_DIFF*' = '#F6367B'
+  ))
+
+```
+## S
+```{r}
+FeaturePlot(integrated_new_Idents, features = c("Slc2a1", "Cdh5"), order = T)
+```
+
+# Fig 5.S
+
+## P
+```{r}
+DimPlot(integrated_new_MES_PERI_SMC_assigned_cleaned, cols = c("#3993D0", '#7DF3FF','#4339D0','#C97398', "#CA4977", "#58B377", "#DC683D", "#FDB756"), pt.size = 2)
+```
+
+## Q
+```{r}
+for(i in c("TdTomato", "Dpt", "Pdgfrb", "Meox1", "Pdgfra", "Tnc", "Rgs5", "Itga6", "Top2a", "Perp")){
+  print(FeaturePlot(integrated_new_MES_PERI_SMC_assigned_cleaned, features = i, order = T, pt.size = 1))
+}
+```
+
+## R
+```{r}
+par(mar=c(1,1,1,1))
+plot(pvclust_merged_RNA$hclust, hang = 0.01, frame.plot = F, ylab='', main ='', yaxt = 'n', 
+     xlab='', sub='')
+```
+
+## S
+```{r}
+print(p)
+```
+
+
+
+
+
+
+
+
