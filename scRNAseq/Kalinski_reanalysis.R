@@ -106,7 +106,6 @@ DimPlot(integrated, reduction = "umap", split.by = "stim")
 DefaultAssay(integrated) = "RNA"
 
 saveRDS(integrated, "integrated_all_CT_Kalinski.Rds")
-#saveRDS(integrated, "integrated_all_CT_Kalinski_bis.Rds")
 
 FeaturePlot(integrated, "Rgs5")
 
