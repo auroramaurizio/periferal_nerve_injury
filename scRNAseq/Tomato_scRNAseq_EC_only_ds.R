@@ -479,6 +479,9 @@ matched <- grep(paste(toMatch,collapse="|"),
 
 ha = rowAnnotation(foo = anno_mark(at = matches, labels = matched))
 
+
+#Fig1 I heatmap
+
 pdf("heatmap_TIP_conditions_together_small_annotations.pdf", 20, 10)
 ComplexHeatmap::pheatmap(sub_samp_ordered,
                          show_rownames = F,
@@ -547,7 +550,6 @@ annotation_row = annotation_row
 counts_ordered = counts[,row.names(annotation_column)]
 counts_ordered = counts_ordered[annotation_row,]
 
-head(counts_ordered)
 
 sub_samp_ordered <- counts_ordered
 
