@@ -1,6 +1,6 @@
 library("Seurat")
+library("open.xlsx")
 
-getwd()
 #upload integrated object containing only EC subtypes
 integrated_EC <-readRDS("integrated_EC.RDS")
 
@@ -143,7 +143,7 @@ head(mg_exp_df)
 cherry_sort <- cherry[order(cherry$pvalue, decreasing = F),]  
 
 SAVE_variable <- list()
-filename_xls <- "DGE_results_Cherry_celltype_0.001.xlsx"
+filename_xls <- "DGE_results_Cherry_celltype.xlsx"
 variable2save_names <- 'KO_vs_WT'
 
 
@@ -208,7 +208,7 @@ merged_3_sort <- merged_3[order(merged_3$pvalue, decreasing = F),]
 
 
 SAVE_variable <- list()
-filename_xls <- "DGE_results_Tomato_celltype_0.001.xlsx"
+filename_xls <- "DGE_results_Tomato_celltype.xlsx"
 variable2save_names <- c('crush_d14_vs_crush_d7', 'crush_d14_vs_intact','crush_d7_vs_intact')
 
 
