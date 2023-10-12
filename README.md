@@ -12,7 +12,7 @@ scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs me
    * [Pdgfrb_scRNAseq_ds.Rmd](./scRNAseq/Pdgfrb_scRNAseq_ds.Rmd) [Analysis and carachterization of Pdgfrb MES cells]
    * [Carr_reanalysis.R](./scRNAseq/Carr_reanalysis.R) [Re-analysis of Carr et al. 2019 scRNAseq dataset. GSE120678]
    * [Toma_reanalysis.R](./scRNAseq/Toma_reanalysis.R) [Re-analysis of Toma et al. 2020 dataset. GSE147285]
-   * [Kalinski_reanalysis.R](./scRNASeq/Kalinski_reanalysis.R) [Re-analysis of Kalinski et al. 2020 dataset. GSE153762]
+   * [Kalinski_reanalysis.R](./scRNAseq/Kalinski_reanalysis.R) [Re-analysis of Kalinski et al. 2020 dataset. GSE153762]
    * [Toma_Carr_Kalinski_Bonanomi_alluvial.R](./scRNAseq/Toma_Carr_Kalinski_Bonanomi_alluvial.R) [Alluvial plot of the relative abundance of EC subtypes in the intact nerve or at different days post injury.]
    * [Milich_EC_label_transfer_alluvial.R](./scRNAseq/Milich_EC_label_transfer_alluvial.R ) [Re-analysis of Milich et al. 2021 spinal cord injury dataset. GSE162610]
    * [Ydens_reanalysis.R](./scRNAseq/Ydens_reanalysis.R) [Re-analyisis of Ydens et al. 2020 dataset. GSE144708]
