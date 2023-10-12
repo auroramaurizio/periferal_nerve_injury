@@ -50,7 +50,7 @@ FeaturePlot(object_clean_new, "Ldlr", label = T)
 cluster.marker_genes[grep("Ldlr", cluster.marker_genes$gene), ]
 
 
-filename_xls <- 'FindAllMarkers_min.pct_0.001.xlsx'
+filename_xls <- 'FindAllMarkers.xlsx'
 write.xlsx(cluster.marker_genes,
            file= filename_xls, 
            row.names = F,
@@ -155,7 +155,7 @@ SAVE_variable[[variable2save_names[1]]] <- cherry_sort
 
 
 write.xlsx(SAVE_variable,
-           file = "DGE_results_Cherry_celltype_0.001.xlsx", 
+           file = "DGE_results_Cherry_celltype.xlsx", 
            row.names = F,
            asTable = F, 
            sheetName =variable2save_names)
