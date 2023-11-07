@@ -17,7 +17,7 @@ library(readxl)
 
 
 # the main function we require is
-# help(generate.celltype.data)
+# help(c)
 
 
 # it takes as input
@@ -88,8 +88,9 @@ exp_DROPPED = drop.uninformative.genes(exp=count_raw,level2annot = level2class)
 #2) Calculate cell type averages and specificity for each gene 
 annotLevels = list(level1class=level1class,level2class=level2class)
 #3) Drop all genes which do not have 1:1 mouse:human orthologs
-fNames = filter.genes.without.1to1.homolog(fNames)
 fNames = generate.celltype.data(exp=exp_DROPPED,annotLevels=annotLevels,groupName="EWCE_ndn")
+fNames = filter.genes.without.1to1.homolog(fNames)
+
 
 #integrated_3TIP <-readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/EC_subset/3TIP/integrated_EC_3TIP.Rds")
 #integrated = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_1287_scRNA_injury/7_bioinfo/Subclustering_mm10_M16_TdTomato_cc_2/seurat_objects/all_cell_types_scBonanomi_full.Rds")
