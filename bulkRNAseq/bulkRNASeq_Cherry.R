@@ -57,9 +57,8 @@ filecount_2='/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bona
 Nreplica= 3
 
 # import metadata
-metadata = read.xlsx("/Users/maurizio.aurora/Documents/metadata.xlsx")
-#remove outliers from metadata
-metadata <- subset(metadata, sample!= c("72","DB_2_130"))
+metadata = read.xlsx("/Users/maurizio.aurora/Documents/metadata_cherry_tomato.xlsx")
+
 
 # import counts
 annotation <- c('GeneID','Chr','Start','End','Strand','Length')
@@ -120,9 +119,7 @@ write.table(fCounts_onlytomato, "Raw_counts_Tomato.tsv", sep = "\t", row.names =
 
 
 metadata_d = metadata[metadata$reporter == 'KDR_cherry',]
-#removed samples 72 and 130
 
-getwd()
 
 row.names(metadata_d) = metadata_d$sample
 cov1=as.factor(metadata_d$nerve)
@@ -191,10 +188,7 @@ write.table(fCountsData_adjusted_df2, "Raw_counts_Cherry_corrected_ComBat_Seq.ts
 y <- DGEList(counts=fCountsData_adjusted_d, genes = fCountsAnnotation)
 fCountsRPKM = rpkm(y, log=T, gene.length =y$genes$Length)
 
-provaA=rowSums(cpm(y)>1)>=Nreplica
-head(provaA)
 keep <- rowSums(cpm(y)>1)>=Nreplica
-length(provaA)
 yf <- y[keep,]
 nrow(yf)
 N=500
@@ -203,11 +197,13 @@ vary_s <- sort(vary, decreasing = T)
 TOP_N <- names(vary_s[1:N])
 yTOP <-  y[TOP_N,]
 fCountsRPKMTOP <- fCountsRPKM[TOP_N,]
+
 #PCA parameters
 pcx = 1
 pcy = 2
 centering = TRUE
 scaling = TRUE
+
 # PCA
 pca = prcomp(t(fCountsRPKMTOP), center=centering, scale=scaling)
 var = round(matrix(((pca$sdev^2)/(sum(pca$sdev^2))), ncol=1)*100,1)
@@ -248,7 +244,8 @@ pca<- ggplot(score, aes(x=score[,pcx], y=score[,pcy],
   scale_color_manual(values = brewer.pal(n = 4, name = "Spectral"))
 
 options(repr.plot.width=13, repr.plot.height=7)
-pdf('PCA_top500rpkm_Cherry_test_geo.pdf', width = 14, height = 10)
+
+pdf('PCA_top500rpkm_Cherry.pdf', width = 14, height = 10)
 pca
 dev.off()
 
@@ -265,7 +262,6 @@ options(repr.plot.width=12, repr.plot.height=10)
 
 
 # top 500 most variable genes heatmap
-
 crp <- colorRampPalette(c('dodgerblue4','white','darkred'))
 colors = crp(255)
 
@@ -296,6 +292,7 @@ ann_colors = list(nerve = c( 'crush_d7' = 'purple'),
 
 toMatch = readLines("/Users/maurizio.aurora/Documents/updw_annotation_cherry.txt")
 subset = readLines("/Users/maurizio.aurora/Documents/heatmap_cherry.txt")
+
 filtered = fCountsRPKM[rownames(fCountsRPKM) %in% subset ,]
 refiltered <- filtered[match(subset, rownames(filtered)), ]
 
@@ -311,8 +308,7 @@ matched <- grep(paste(toMatch,collapse="|"),
 ha = rowAnnotation(foo = anno_mark(at = matches, labels = matched))
 
 # FigS3 A
-
-pdf('Heatmap_logrpkm_Cherry_white_filtered_annotated_smallish_test.pdf',10, 12)
+pdf('Heatmap_logrpkm_Cherry_white_filtered_annotated.pdf',10, 12)
 ComplexHeatmap::pheatmap(refiltered,
                          scale = 'row',
                          annotation_col = annotation_column_,
@@ -332,6 +328,7 @@ ComplexHeatmap::pheatmap(refiltered,
 dev.off()
 
 #####MiniHeatmaps#######
+
 # Fig3 F
 annotation_column = as.data.frame(colnames(KOWTac))
 colnames(annotation_column)= "Plxnd1"
