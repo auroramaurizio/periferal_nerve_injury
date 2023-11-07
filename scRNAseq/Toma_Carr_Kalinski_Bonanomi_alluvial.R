@@ -23,7 +23,7 @@ library("ggalluvial")
 
 # upload our dataset, only EC
 
-integrated_EC <-readRDS("integrated_EC.Rds")
+integrated_EC <-readRDS("/Users/maurizio.aurora/integrated_EC.Rds")
 integrated_EC$CellTypes = Idents(integrated_EC)
 integrated_EC <- RunPCA(integrated_EC, npcs = 35, verbose = FALSE)
 integrated_EC <- RunUMAP(integrated_EC, reduction = "pca", dims = 1:35, verbose = FALSE, return.model=TRUE)
@@ -31,6 +31,8 @@ integrated_EC <- RunUMAP(integrated_EC, reduction = "pca", dims = 1:35, verbose 
 sample1 <- subset(x = integrated_EC, subset = stim == "1")
 sample2 <- subset(x = integrated_EC, subset = stim == "2")
 
+
+DimPlot(integrated_EC)
 # upload EC subsets of public peripheral nerve injury datasets.
 
 # The studies:
@@ -38,10 +40,10 @@ sample2 <- subset(x = integrated_EC, subset = stim == "2")
 # Toma et al. 2020 dataset. GSE147285
 # Kalinski et al. 2020 dataset. GSE153762
 
-TU = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_12INTERMEDIATE7_scRNA_injury/7_bioinfo/public_data/Toma/reanalysis/Seurat_objects/EC_Toma_Uninjured.Rds")
-TI = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_12INTERMEDIATE7_scRNA_injury/7_bioinfo/public_data/Toma/reanalysis/Seurat_objects/EC_Toma_3D.Rds")
+TU = readRDS("/Users/maurizio.aurora/EC_Toma_Uninjured.Rds")
+TI = readRDS("/Users/maurizio.aurora/EC_Toma_3D.Rds")
 KI = readRDS("/Users/maurizio.aurora/integrated_EC_Kalinski_no_pericytes.Rds")
-CI = readRDS("/Users/maurizio.aurora/Dropbox (HSR Global)/WORKSPACE/Bonanomi/Bonanomi_12INTERMEDIATE7_scRNA_injury/7_bioinfo/public_data/fibroblasts_Carr/reanalysis/Seurat_objects/EC_Carr_9D.Rds")
+CI = readRDS("/Users/maurizio.aurora/EC_Carr_9D.Rds")
 
 
 DefaultAssay(sample1) = "RNA"
