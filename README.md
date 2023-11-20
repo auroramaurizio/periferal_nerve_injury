@@ -1,6 +1,9 @@
 # Peripheral nerve injury
 scRNAseq and BulkRNAseq scripts for "*Structured wound angiogenesis instructs mesenchymal barrier compartments in the regenerating nerve*" publication 
 
+[![DOI](https://doi.org/10.1016/j.neuron.2023.10.025)](https://doi.org/10.1016/j.neuron.2023.10.025)
+
+
 Code Authors: Aurora Maurizio, Stefano de Pretis, Santo Diprima
 
 [![DOI](https://zenodo.org/badge/678296994.svg)](https://zenodo.org/badge/latestdoi/678296994)
